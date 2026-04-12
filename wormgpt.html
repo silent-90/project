@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WormGPT - Private Terminal</title>
+    <style>
+        body {
+            background-color: #050505;
+            color: #00ff41; /* لون الهكر التقليدي */
+            font-family: 'Courier New', Courier, monospace;
+            margin: 0;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        /* شريط علوي احترافي */
+        .header {
+            background: #0a0a0a;
+            padding: 10px 20px;
+            border-bottom: 1px solid #333;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 14px;
+            color: #ff4b4b; /* لون أحمر للتنبيه */
+        }
+
+        .status-dot {
+            height: 8px;
+            width: 8px;
+            background-color: #ff4b4b;
+            border-radius: 50%;
+            display: inline-block;
+            margin-left: 5px;
+            box-shadow: 0 0 8px #ff4b4b;
+            animation: blink 1s infinite;
+        }
+
+        @keyframes blink {
+            50% { opacity: 0; }
+        }
+
+        /* منطقة الشات */
+        .terminal {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            background-image: radial-gradient(rgba(0, 150, 0, 0.1) 0%, transparent 100%);
+        }
+
+        .line { margin-bottom: 5px; line-height: 1.4; }
+        .system-msg { color: #888; font-size: 12px; }
+        .bot-msg { color: #00ff41; }
+        .user-msg { color: #fff; border-right: 2px solid #00ff41; padding-right: 5px; }
+
+        /* منطقة الإدخال */
+        .input-area {
+            background: #0a0a0a;
+            padding: 15px;
+            border-top: 1px solid #333;
+            display: flex;
+            gap: 10px;
+        }
+
+        input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: #00ff41;
+            font-family: inherit;
+            font-size: 16px;
+            outline: none;
+        }
+
+        .cursor {
+            width: 10px;
+            height: 20px;
+            background: #00ff41;
+            animation: blink 0.8s infinite;
+        }
+
+        /* تأثير مصفوفة (Matrix) خفيف في الخلفية */
+        #matrix-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: -1;
+            opacity: 0.05;
+        }
+    </style>
+</head>
+<body>
+
+    <canvas id="matrix-bg"></canvas>
+
+    <div class="header">
+        <div>WORM-GPT v3.0.4 - SESSION: ENCRYPTED</div>
+        <div><span class="status-dot"></span> متصل بنجاح</div>
+    </div>
+
+    <div class="terminal" id="terminal">
+        <div class="line system-msg">[SYSTEM]: Initializing secure tunnel... Done.</div>
+        <div class="line system-msg">[SYSTEM]: AI Core loaded. Welcome to the shadows.</div>
+        <div class="line bot-msg">** WormGPT **: مرحباً بك في النسخة الخاصة. أنا جاهز لتنفيذ أوامرك البرمجية والتقنية بدون قيود. ماذا تريد أن نفحص اليوم؟</div>
+    </div>
+
+    <div class="input-area">
+        <span style="color: #ff4b4b;">root@wormgpt:~$</span>
+        <input type="text" id="user-input" placeholder="اكتب أمرك هنا..." autofocus autocomplete="off">
+    </div>
+
+    <script>
+        const terminal = document.getElementById('terminal');
+        const userInput = document.getElementById('user-input');
+
+        // مصفوفة كلمات توحي بالعمل التقني
+        const fakeResponses = [
+            "جاري فحص الثغرات المطلوبة...",
+            "تم الوصول إلى قاعدة البيانات المشفرة، جاري فك التشفير...",
+            "تحذير: النظام المستهدف يحتوي على جدار حماية قوي، جاري الالتفاف...",
+            "تم استخراج ملفات التكوين (Config files).",
+            "الأمر قيد التنفيذ في الخلفية..."
+        ];
+
+        userInput.addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
+                const val = this.value;
+                if (val.trim() === "") return;
+
+                // إضافة نص المستخدم للواجهة
+                const userLine = document.createElement('div');
+                userLine.className = 'line user-msg';
+                userLine.textContent = `> ${val}`;
+                terminal.appendChild(userLine);
+
+                this.value = ""; // مسح الحقل
+
+                // رد الروبوت الوهمي بعد ثواني
+                setTimeout(() => {
+                    const botLine = document.createElement('div');
+                    botLine.className = 'line bot-msg';
+                    const randomResp = fakeResponses[Math.floor(Math.random() * fakeResponses.length)];
+                    botLine.textContent = `WormGPT: ${randomResp}`;
+                    terminal.appendChild(botLine);
+                    terminal.scrollTop = terminal.scrollHeight; // النزول لآخر الشات
+                }, 1000);
+            }
+        });
+
+        // تأثير Matrix بسيط
+        const canvas = document.getElementById('matrix-bg');
+        const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        const letters = "01010101ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+        const fontSize = 14;
+        const columns = canvas.width / fontSize;
+        const drops = [];
+        for (let i = 0; i < columns; i++) drops[i] = 1;
+
+        function drawMatrix() {
+            ctx.fillStyle = "rgba(0, 0, 0, 0.05)";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = "#0f0";
+            ctx.font = fontSize + "px arial";
+            for (let i = 0; i < drops.length; i++) {
+                const text = letters.charAt(Math.floor(Math.random() * letters.length));
+                ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+                if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) drops[i] = 0;
+                drops[i]++;
+            }
+        }
+        setInterval(drawMatrix, 50);
+    </script>
+</body>
+</html>
